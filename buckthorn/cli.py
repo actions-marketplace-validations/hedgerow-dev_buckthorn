@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import fnmatch
+import glob
 import hashlib
 import io
 import json
@@ -22,7 +23,7 @@ from pathlib import Path
 from buckthorn import hf, lock, mcp_config
 from buckthorn.env import scan_env
 from buckthorn.findings import COVERAGE_RULE_IDS, Finding, Result, Severity, new_findings
-from buckthorn.scan import ARTIFACT_SUFFIXES, scan_artifact, split_artifact_name
+from buckthorn.scan import ARTIFACT_SUFFIXES, CALL_TIME, scan_artifact, split_artifact_name
 
 _SEVERITY_ORDER = list(Severity)
 
@@ -134,6 +135,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"buckthorn: could not write {args.receipt}: {exc}", file=sys.stderr)
             return 2
     _apply_allowlist(results, allow)
+    if args.write_allowlist:
+        accepted = _baseline(results)
+        try:
+            text = json.dumps({"allow": allow + accepted}, indent=2) + "\n"
+            args.write_allowlist.write_text(text, encoding="utf-8")
+        except OSError as exc:
+            print(f"buckthorn: could not write {args.write_allowlist}: {exc}", file=sys.stderr)
+            return 2
+        _apply_allowlist(results, accepted)
+        left = sum(
+            f.severity != Severity.INFO and f.rule_id not in COVERAGE_RULE_IDS
+            for r in results
+            for f in r.findings
+        )
+        if left:
+            print(
+                f"buckthorn: {left} finding{'s' if left > 1 else ''} not tied to a package "
+                "version could not be accepted and still count",
+                file=sys.stderr,
+            )
     return _report(results, args)
 
 
@@ -224,22 +245,62 @@ def _load_allowlist(path: Path) -> list[dict[str, str]]:
     return entries
 
 
+def _package_of(result: Result) -> tuple[str, str]:
+    """Package and version a result is named for, or ("", "").
+
+    Only results named for a package can be allowed: name==version (env, pins)
+    or an artifact file. Anything else, like the env's unowned files, never matches.
+    """
+    if "==" in result.path:
+        package, _, release = result.path.partition("==")
+    elif result.path.lower().endswith(ARTIFACT_SUFFIXES):
+        package, release = split_artifact_name(Path(result.path).name)
+    elif "@" in result.path:  # a Hub repo at a commit: org/name@sha
+        package, _, release = result.path.partition("@")
+    else:
+        package, release = "", ""
+    return package, release
+
+
+def _allow_file(finding: Finding, release: str) -> str:
+    """The finding's file with the version folder taken out, as allowlist globs match."""
+    first, sep, rest = finding.file_path.partition("/")
+    return first.replace(f"-{release}", "") + sep + rest if release else finding.file_path
+
+
+def _baseline(results: list[Result]) -> list[dict[str, str]]:
+    """Allowlist entries for every finding left after --allowlist, pinned to its version,
+    for --write-allowlist. Coverage gaps and info notes are never written."""
+    reason = (
+        f"accepted as found by buckthorn {version('buckthorn')} on "
+        f"{datetime.now(UTC).date().isoformat()}; review before trusting"
+    )
+    entries: list[dict[str, str]] = []
+    for result in results:
+        package, release = _package_of(result)
+        if not package:
+            continue
+        for finding in result.findings:
+            if finding.severity == Severity.INFO or finding.rule_id in COVERAGE_RULE_IDS:
+                continue
+            if "@" in result.path and "@" in finding.file_path:
+                continue  # code fetched from another repo's main branch is never allowed
+            entry = {"rule": finding.rule_id, "package": package}
+            if release:
+                entry["version"] = release
+            # The file is matched as a glob: a name from the package must match only itself.
+            entry |= {"file": glob.escape(_allow_file(finding, release)), "reason": reason}
+            if entry not in entries:
+                entries.append(entry)
+    return entries
+
+
 def _apply_allowlist(results: list[Result], entries: list[dict[str, str]]) -> None:
     for result in results:
-        # Only results named for a package can be allowed: name==version (env, pins)
-        # or an artifact file. Anything else, like the env's unowned files, never matches.
-        if "==" in result.path:
-            package, _, release = result.path.partition("==")
-        elif result.path.lower().endswith(ARTIFACT_SUFFIXES):
-            package, release = split_artifact_name(Path(result.path).name)
-        elif "@" in result.path:  # a Hub repo at a commit: org/name@sha
-            package, _, release = result.path.partition("@")
-        else:
-            package, release = "", ""
+        package, release = _package_of(result)
         kept = []
         for finding in result.findings:
-            first, sep, rest = finding.file_path.partition("/")
-            file = first.replace(f"-{release}", "") + sep + rest if release else finding.file_path
+            file = _allow_file(finding, release)
             reason = next(
                 (
                     e["reason"]
@@ -341,6 +402,13 @@ def _add_report_arguments(parser: argparse.ArgumentParser) -> None:
         help="JSON file of findings you have reviewed and accept, each with a reason",
     )
     parser.add_argument(
+        "--write-allowlist",
+        type=Path,
+        metavar="FILE",
+        help="accept every finding of this run: write it to FILE (with any --allowlist "
+        "entries), pinned to its version. Review the file before you commit it",
+    )
+    parser.add_argument(
         "--receipt",
         type=Path,
         metavar="FILE",
@@ -429,6 +497,11 @@ def _report(results: list[Result], args: argparse.Namespace, to_file: bool = Fal
         }
         summary = ", ".join(f"{n} {v}" for v, n in counts.items() if n)
         print(f"\n{len(results)} scanned: {summary}")
+        if counts["clean"] and args.command in ("scan", "check", "env") and not CALL_TIME:
+            print(
+                "clean: nothing flagged in what runs at install, at start-up or at import. "
+                "Code that only runs when you call it is not read."
+            )
         if hidden:
             print(
                 f"{hidden} info note{'s' if hidden > 1 else ''} hidden (--format json shows them)"

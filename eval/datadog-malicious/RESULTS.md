@@ -2,9 +2,9 @@
 
 Run 2026-11-03 with Buckthorn at commit `0ff1f80` (branch `m1-artifact-scan`),
 then again after the G6, G2 and G1 rule changes (see below).
-Internal working note. Per `SPEC.md`, no accuracy number is published until the
-malicious and benign corpora are both run and reviewed. The counts below are
-what this run produced, for triage, not a detection rate.
+A working note from tuning. The counts below are what this run produced, for
+triage, not a detection rate. The headline numbers are in
+`../heldout/RESULTS.md`.
 
 ## What was scanned
 

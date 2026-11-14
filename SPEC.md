@@ -1,6 +1,7 @@
 # Buckthorn: spec
 
-Status: draft.
+Status: 0.1, a preview. Written before the code: where they differ, the README
+and `docs/rules.md` describe what ships.
 
 ## The one-line version
 
@@ -25,7 +26,8 @@ through a dependency. Buckthorn is where it gets caught.
 ## Scope
 
 **In (v1):** Python packages from PyPI: wheels, sdists, a lockfile or
-requirements file, and an installed environment.
+requirements file, and an installed environment. Also, as previews in 0.1:
+npm tarballs, an agent's MCP config, and Hugging Face remote code.
 
 **Out:**
 - Model files (that is Hayward).
@@ -34,7 +36,7 @@ requirements file, and an installed environment.
 - License compliance.
 - Reputation scores built on data we cannot show (download counts, author age
   as a verdict). These may appear as context, never as the reason for a verdict.
-- npm and other ecosystems. Revisit after v1 (see open questions).
+- Other ecosystems (cargo, RubyGems, Go modules), and npm lockfiles for now.
 
 ## Inputs
 
@@ -125,18 +127,9 @@ Decided 2026-11-03: not yet. Hayward's verdict logic only knows its own
 its own small `Finding` with the same field and verdict names. Revisit when
 the report formats are needed.
 
-Buckthorn depends on the `hayward` package for the parts that are not about model
-files:
-
-- `Finding`, severities, coverage rules and `file_verdicts`
-- report formats (text, JSON, SARIF, HTML)
-- policy, baseline and allowlist files
-- signed scan receipts (in-toto), so a CI job can prove what it checked
-- archive reading limits and embedded-executable detection
-
-New code is the package readers (wheel, sdist, lockfiles, `RECORD`) and the
-`BKT-` rules. If the shared part grows, it can move into a small common core
-later; not before it is needed.
+In 0.1 Buckthorn does not depend on `hayward`. It has its own `Finding`,
+report formats, allowlist and in-toto receipts, with the same names and
+shapes as Hayward's, so a shared core can be split out later if both need it.
 
 ## Interfaces
 
@@ -148,8 +141,8 @@ buckthorn env .venv                            # an installed environment
 buckthorn diff requests==2.32.3 requests==2.32.4
 ```
 
-Plus, after the CLI is stable: a pre-commit hook, a GitHub Action that runs
-`buckthorn check` on lockfile changes, and an MCP tool like Hayward's.
+Also: a pre-commit hook, a GitHub Action that runs `buckthorn check` on
+lockfile changes, and an MCP server (`buckthorn mcp`).
 
 Exit codes follow Hayward: 0 clean, 1 flagged, 2 error, and `not_verified`
 treated as flagged unless the caller opts out.
@@ -190,14 +183,14 @@ Each one ships on its own, with tests first.
   Knife Collection. Read only inside an isolated container with no network.
 - **Benign corpus:** the most-installed PyPI packages, scanned the same way.
   Every flag on it is triaged and either fixed or documented.
-- No accuracy numbers are published until both corpora are run and the results
-  are reviewed.
+- Headline numbers come from a pre-registered test on packages none of the
+  rules were tuned on: `eval/heldout/RESULTS.md`.
 
 ## Open questions
 
 1. **License.** Decided 2026-11-06: MIT, like Hayward and Rowan.
-2. **Packaging.** A separate `buckthorn` package that depends on `hayward`
-   (the working assumption), or a shared core both depend on from the start?
+2. **Packaging.** Decided for 0.1: a separate `buckthorn` package with no
+   dependency on `hayward`. A shared core waits until both need it.
 3. **npm next?** Decided 2026-11-11: yes, npm is the next ecosystem, in this
    tool, with new rule ids under `BKT-NPM-*`. Plan: `docs/beyond-python-plan.md`.
 4. **Service.** Should hayward-verify also publish signed Buckthorn verdicts for

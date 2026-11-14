@@ -1,6 +1,6 @@
 # npm phase 1: what package.json alone catches
 
-Internal. Not for publication. Counts are from one run each, on 2026-11-11,
+A working note. Counts are from one run each, on 2026-11-11,
 image `buckthorn-scan:npm-2` built from commit 0f6120b. Small samples: read
 them as a shape, not a rate.
 

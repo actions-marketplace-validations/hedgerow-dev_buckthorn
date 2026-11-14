@@ -1,6 +1,6 @@
 # Held-out run: Buckthorn c80b090 and GuardDog 3.2.0
 
-Run 2026-11-12. Internal: not for publishing until reviewed.
+Run 2026-11-12.
 Protocol in `PROTOCOL.md`, committed as `f3a5701` at 2026-11-12 21:46 +0100,
 before any held-out sample was fetched or scanned. Nothing in the rules was
 changed during or after this run.

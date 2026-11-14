@@ -131,3 +131,49 @@ def test_text_report_survives_a_console_that_cannot_encode_a_name(make_wheel, mo
     assert main(["scan", str(path)]) == 1
     out.flush()
     assert b"BKT-PTH" in out.buffer.getvalue()
+
+
+def test_write_allowlist_accepts_todays_findings_pinned_to_the_version(make_wheel, tmp_path):
+    path = make_wheel({"pkg.pth": SHADOW})
+    baseline = tmp_path / "allow.json"
+    assert main(["scan", "--write-allowlist", str(baseline), str(path)]) == 0
+    entries = json.loads(baseline.read_text(encoding="utf-8"))["allow"]
+    assert [(e["rule"], e["package"], e["version"], e["file"]) for e in entries] == [
+        ("BKT-PTH-002", "pkg", "1.0", "pkg.pth")
+    ]
+    assert all(e["reason"] for e in entries)
+    assert main(["scan", "--allowlist", str(baseline), str(path)]) == 0
+    newer = make_wheel({"pkg.pth": SHADOW}, name="pkg-1.1-py3-none-any.whl")
+    assert main(["scan", "--allowlist", str(baseline), str(newer)]) == 1
+
+
+def test_write_allowlist_keeps_reviewed_entries_and_never_accepts_a_coverage_gap(
+    make_wheel, tmp_path
+):
+    reviewed = {"rule": "BKT-PTH-001", "package": "other", "reason": "reviewed by hand"}
+    allow = tmp_path / "allow.json"
+    allow.write_text(json.dumps({"allow": [reviewed]}), encoding="utf-8")
+    broken = tmp_path / "bad-1.0-py3-none-any.whl"
+    broken.write_bytes(b"nope")
+    flagged = make_wheel({"pkg.pth": SHADOW})
+    args = ["scan", "--allowlist", str(allow), "--write-allowlist", str(allow)]
+    assert main([*args, str(flagged), str(broken)]) == 1  # not_verified still fails
+    entries = json.loads(allow.read_text(encoding="utf-8"))["allow"]
+    assert entries[0] == reviewed
+    assert {e["rule"] for e in entries[1:]} == {"BKT-PTH-002"}
+
+
+def test_text_report_says_what_clean_covers(make_wheel, capsys):
+    assert main(["scan", str(make_wheel({"pkg/__init__.py": "x = 1\n"}))]) == 0
+    assert "only runs when you call it is not read" in capsys.readouterr().out
+
+
+def test_write_allowlist_escapes_glob_characters_in_file_names(make_wheel, tmp_path):
+    path = make_wheel({"[x].pth": SHADOW, "*.pth": SHADOW})
+    baseline = tmp_path / "allow.json"
+    main(["scan", "--write-allowlist", str(baseline), str(path)])
+    files = sorted(e["file"] for e in json.loads(baseline.read_text(encoding="utf-8"))["allow"])
+    assert files == ["[*].pth", "[[]x].pth"]
+    assert main(["scan", "--allowlist", str(baseline), str(path)]) == 0
+    other = make_wheel({"[x].pth": SHADOW, "evil.pth": SHADOW})
+    assert main(["scan", "--allowlist", str(baseline), str(other)]) == 1

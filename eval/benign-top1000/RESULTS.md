@@ -1,7 +1,7 @@
 # Top 1,000 PyPI packages: benign run
 
-Run 2026-11-05. Internal working note. Per `SPEC.md`, no accuracy number is
-published until both corpora are reviewed; the counts here are for triage.
+Run 2026-11-05. A working note from tuning: the counts here are for triage.
+The headline numbers are in `../heldout/RESULTS.md`.
 
 ## What was scanned
 

@@ -1,6 +1,6 @@
 # npm phase 3: rules on the JavaScript that runs on its own
 
-Internal. Not for publication. Counts are from single runs on 2026-11-12
+A working note. Counts are from single runs on 2026-11-12
 (final code: commit 87e7563, image `buckthorn-scan:npm3-3`). Small samples:
 read them as a shape, not a rate.
 
@@ -47,10 +47,9 @@ read them as a shape, not a rate.
 - **Benign:** npm-high-impact 1.13.0 `lib/top.js`, first 1,000 names (the
   same sha256 as phase 2). Latest version of each from registry.npmjs.org,
   sha512 integrity checked (1,000 of 1,000), kept in a scratch folder on the
-  VM for the runs, never unpacked, never run. Azure VM `vm-bkt-npm`
-  (Standard_D4s_v5, Ubuntu 24.04, no Node or npm), created for this
-  because `vm-heldout2` was in use by other work; deleted afterwards with
-  its NIC, NSG, public IP and disk. Scripts: `fetch_top.py`, `scan_top.py`,
+  VM for the runs, never unpacked, never run. An Azure VM
+  (Standard_D4s_v5, Ubuntu 24.04, no Node or npm), created for this run
+  and deleted afterwards with its NIC, NSG, public IP and disk. Scripts: `fetch_top.py`, `scan_top.py`,
   `agg_top.py`, `reach_top.py`.
 - **Malicious:** the 200 DataDog samples phase 1 used (50
   compromised_lib, 150 malicious_intent), in podman volume `bkt-npm-mal` on

@@ -1,6 +1,6 @@
 # npm phase 2: the tokenizer on the benign top 1,000
 
-Internal. Not for publication. One run on 2026-11-12, repeated once after
+A working note. One run on 2026-11-12, repeated once after
 review fixes with the same counts. Code from this branch (`buckthorn/js.py`).
 
 ## Short version
@@ -22,7 +22,7 @@ review fixes with the same counts. Code from this branch (`buckthorn/js.py`).
   checked, held in a scratch file only while `read_archive` read it into
   memory, then deleted. Nothing unpacked, nothing run; the VM had no Node or
   npm.
-- Machine: Azure VM `vm-heldout2` (Standard_D4s_v5, Ubuntu 24.04, Python
+- Machine: an Azure VM (Standard_D4s_v5, Ubuntu 24.04, Python
   3.12), which was idle (load 0.14, no user
   processes). Work went in `~/bkt-npm-phase2`, deleted afterwards. No Azure
   resources were created or changed.

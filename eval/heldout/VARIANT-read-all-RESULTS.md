@@ -1,6 +1,6 @@
 # Read-all variant on the held-out set: results
 
-Run 2026-11-13. Internal: not for publishing until reviewed. Exploratory,
+Run 2026-11-13. Exploratory,
 outside the original protocol. Plan in `VARIANT-read-all.md`, committed as
 `b2fcf3e` at 09:07:01 +0100, before any held-out scan with the variant. One
 shot: nothing was changed after seeing results.
@@ -53,7 +53,7 @@ need to look for malicious combinations, not single calls.
 | Payload in a dependency | 0 of 2 |
 | Payload in native code | 0 of 1 |
 
-## Benign (5,723 files, Azure VM `vm-bkt-heldout`)
+## Benign (5,723 files, on an Azure VM)
 
 | | B1: ranks 1,001 to 3,000 (3,834) | B2: random recent (1,889) |
 |---|---|---|

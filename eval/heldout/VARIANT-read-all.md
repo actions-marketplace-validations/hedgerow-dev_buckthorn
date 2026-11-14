@@ -64,7 +64,7 @@ about 7% to about 49% of files before held-out is touched.
 - **B1:** PyPI ranks 1,001 to 3,000. **B2:** 1,000 random recently released
   projects. Files as in `lists/benign-scan-list.txt` and
   `lists/benign-manifest.jsonl.gz` at held-out commit `fa04d31`, from the
-  cache on Azure VM `vm-bkt-heldout`.
+  cache on an Azure VM.
 - Same driver, unchanged: `scripts/scan_heldout.py` (sha256
   `ea50993b...b751f`), 4 workers, 900 s timeout per file, `--network none
   --read-only --cap-drop all --security-opt no-new-privileges`, tmpfs scratch.

@@ -1,7 +1,8 @@
 # Buckthorn and GuardDog on the same files
 
 GuardDog run 2026-11-06. Buckthorn rerun 2026-11-12 at commit `17cc527`.
-Internal only: not for publishing until reviewed.
+On the tuning sets. The comparison on unseen packages is in
+`../heldout/RESULTS.md`.
 
 ## Setup
 

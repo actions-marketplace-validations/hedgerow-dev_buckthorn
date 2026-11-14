@@ -1,7 +1,7 @@
 # pypi_malregistry: second malicious corpus
 
-Run 2026-11-05 and 2026-11-06. Internal working note. Per `SPEC.md`, no
-accuracy number is published; the counts here are for triage.
+Run 2026-11-05 and 2026-11-06. A working note from tuning: the counts here
+are for triage. The headline numbers are in `../heldout/RESULTS.md`.
 
 ## Why this corpus
 
