@@ -1,0 +1,6 @@
+FROM docker.io/library/python:3.12-slim
+# buckthorn-src.tar is `git archive HEAD` of this repo.
+COPY buckthorn-src.tar /tmp/
+RUN mkdir /src && tar -xf /tmp/buckthorn-src.tar -C /src && pip install --no-cache-dir /src && rm -rf /tmp/buckthorn-src.tar
+RUN useradd -m scanner
+USER scanner

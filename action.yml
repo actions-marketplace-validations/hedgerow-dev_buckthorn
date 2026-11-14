@@ -1,0 +1,144 @@
+name: Buckthorn dependency check
+description: >-
+  Before dependencies are installed, check every artifact a lockfile pins for
+  code that runs at install, at start-up or at import. Fails the build and
+  writes SARIF.
+author: Hedgerow
+
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  lockfile:
+    description: Path to a requirements.txt with hashes, uv.lock or poetry.lock.
+    required: true
+  allowlist:
+    description: Optional path to an allowlist of reviewed findings (see README).
+    required: false
+    default: ""
+  all-files:
+    description: >-
+      Set to "true" to check every pinned file. By default only the file this
+      runner would install is checked for each package.
+    required: false
+    default: "false"
+  allow-not-verified:
+    description: >-
+      Set to "true" to pass when something could not be fully read. By default
+      that fails the build, like a finding.
+    required: false
+    default: "false"
+  output:
+    description: Path for the SARIF report.
+    required: false
+    default: buckthorn.sarif
+  receipt:
+    description: >-
+      Optional path for a scan receipt: an in-toto statement of each checked
+      artifact's hash and what was found. Not a safety certificate.
+    required: false
+    default: ""
+  attest:
+    description: >-
+      Set to "true" to sign the receipt with GitHub artifact attestations
+      (Sigstore, keyless). Needs `receipt`, and the job needs the permissions
+      `id-token: write` and `attestations: write`. Runs even when the check
+      fails the build, since a receipt for a flagged artifact is still evidence.
+    required: false
+    default: "false"
+
+outputs:
+  sarif:
+    description: Path to the SARIF report written by the check.
+    value: ${{ inputs.output }}
+  receipt:
+    description: Path to the scan receipt, when one was requested.
+    value: ${{ inputs.receipt }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      # Pinned to a commit SHA: mutable tags are a supply-chain risk for a
+      # security tool's own action. Same pin as Hayward's action.
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      with:
+        python-version: "3.12"
+
+    # Installed from this action's own checkout, so the version is the ref the
+    # workflow pinned. Inputs reach the scripts only through the environment,
+    # never spliced into them: ${{ inputs.x }} inside run: is script injection.
+    - name: Install buckthorn
+      shell: bash
+      run: python -m pip install "$GITHUB_ACTION_PATH"
+
+    - name: Check the lockfile
+      id: check
+      shell: bash
+      env:
+        LOCKFILE: ${{ inputs.lockfile }}
+        ALLOWLIST: ${{ inputs.allowlist }}
+        ALL_FILES: ${{ inputs.all-files }}
+        ALLOW_NOT_VERIFIED: ${{ inputs.allow-not-verified }}
+        OUTPUT: ${{ inputs.output }}
+        RECEIPT: ${{ inputs.receipt }}
+      run: |
+        # Only a receipt this check wrote may be signed, never one already in
+        # the checkout.
+        if [ -n "$RECEIPT" ]; then
+          rm -f -- "$RECEIPT"
+        fi
+        args=(check "$LOCKFILE" --format sarif --output "$OUTPUT")
+        if [ -n "$RECEIPT" ]; then
+          args+=(--receipt "$RECEIPT")
+        fi
+        if [ -n "$ALLOWLIST" ]; then
+          args+=(--allowlist "$ALLOWLIST")
+        fi
+        if [ "$ALL_FILES" = "true" ]; then
+          args+=(--all-files)
+        fi
+        if [ "$ALLOW_NOT_VERIFIED" = "true" ]; then
+          args+=(--allow-not-verified)
+        fi
+        buckthorn "${args[@]}"
+
+    # The same signing steps as Hayward's action. actions/attest builds and signs
+    # the in-toto statement itself, from a predicate file and a checksums file of
+    # the subjects, so both are cut from the receipt. !cancelled() because in a
+    # composite action an `if` without a status function means success() && ...,
+    # which would skip signing whenever the check fails the build; gating on the
+    # check step's outcome keeps a receipt it did not write from being signed.
+    - name: Prepare the receipt for signing
+      id: prepare
+      if: ${{ !cancelled() && (steps.check.outcome == 'success' || steps.check.outcome == 'failure') && inputs.attest == 'true' && inputs.receipt != '' && hashFiles(inputs.receipt) != '' }}
+      shell: bash
+      env:
+        RECEIPT: ${{ inputs.receipt }}
+      run: |
+        python - "$RECEIPT" "$RUNNER_TEMP/buckthorn-predicate.json" "$RUNNER_TEMP/buckthorn-subjects.txt" <<'PY'
+        import json, re, sys
+        statement = json.load(open(sys.argv[1], encoding="utf-8"))
+        lines = []
+        for subject in statement["subject"]:
+            digest, name = subject["digest"]["sha256"], subject["name"]
+            # One subject per line: a control character in a name would add a
+            # line, and so a subject the check never saw.
+            if not re.fullmatch(r"[0-9a-f]{64}", digest) or any(ord(c) < 32 or ord(c) == 127 for c in name):
+                sys.exit(f"buckthorn: refusing to sign a receipt with an unusual subject: {name!r}")
+            lines.append(f"{digest}  {name}\n")
+        if not lines:
+            sys.exit("buckthorn: the receipt has no artifacts to sign")
+        json.dump(statement["predicate"], open(sys.argv[2], "w", encoding="utf-8"))
+        with open(sys.argv[3], "w", encoding="utf-8") as out:
+            out.writelines(lines)
+        PY
+
+    - name: Sign the receipt
+      if: ${{ !cancelled() && steps.prepare.outcome == 'success' }}
+      uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+      with:
+        subject-checksums: ${{ runner.temp }}/buckthorn-subjects.txt
+        predicate-type: https://hedgerow.dev/buckthorn/scan-receipt/v1
+        predicate-path: ${{ runner.temp }}/buckthorn-predicate.json

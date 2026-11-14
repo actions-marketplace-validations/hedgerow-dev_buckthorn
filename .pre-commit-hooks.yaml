@@ -1,0 +1,9 @@
+# files: matches the lockfiles `buckthorn check` reads; tests/test_report.py
+# checks the pattern. Update both together.
+- id: buckthorn-check
+  name: buckthorn check
+  description: Fetch every artifact a changed lockfile pins, check its hash, and scan it
+  entry: buckthorn check
+  language: python
+  pass_filenames: true
+  files: '(^|/)(uv\.lock|poetry\.lock|requirements[^/]*\.txt)$'

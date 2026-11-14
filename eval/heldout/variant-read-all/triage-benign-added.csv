@@ -1,0 +1,31 @@
+sample,class,where,note
+b1/aioice-0.13.0.tar.gz,real behaviour,examples,example ICE client connects to a websocket signalling server
+b1/aiormq-7.2.5.tar.gz,real behaviour,tests,test helper talks to the Docker socket
+b1/apache_airflow_providers_fab-3.11.0-py3-none-any.whl,real behaviour,package,fetches a JWKS key set to check login tokens
+b1/azure_mgmt_apimanagement-5.0.0.tar.gz,real behaviour,package,generated serializer evals a type name (marked nosec)
+b1/gcovr-8.8-py3-none-any.whl,real behaviour,package,runs gcov and llvm-cov
+b1/newrelic-14.3.0.tar.gz,real behaviour,package and tests,agent opens sockets to find its own IP and serve a console; one line is getsockname
+b1/openai_whisper-20250625.tar.gz,real behaviour,package,downloads model weights and runs ffmpeg
+b1/pikepdf-10.18.0.tar.gz,real behaviour,package and dev scripts,runs subprocesses in release scripts and tests
+b1/poethepoet-0.49.0-py3-none-any.whl,real behaviour,package,task runner: running commands is its job
+b1/ppft-1.7.8.tar.gz,real behaviour,package,parallel Python: starts workers and execs code it is sent
+b1/pydantic_ai_harness-0.68.0.tar.gz,real behaviour,package,evals type annotations and runs docker; the .zshenv hit only adds a path to a protect-list
+b1/pygame-2.6.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl,real behaviour,package and tests,runs fc-list and similar to find fonts and cameras
+b1/python-xlib-0.33.tar.gz,real behaviour,package,connects to the X server and runs xauth
+b1/qdrant_client-1.20.0-py3-none-any.whl,real behaviour,package,asks the server for its version
+b2/airx-1.28.0-py3-none-any.whl,real behaviour,package,runs a bundled binary from its CLI
+b2/babyseat-0.7.53.tar.gz,real behaviour,package and tests,self-update: checks PyPI for a new version and runs pip with a copy of the environment (critical BKT-IMPORT-008)
+b2/coopagents-0.9.0.tar.gz,real behaviour,package and tests,OAuth and health-check requests
+b2/damlforge-0.0.13-py3-none-any.whl,real behaviour,package,runs the daml toolchain
+b2/h2o_audit_trail-1.5.4.tar.gz,real behaviour,package,requests the server version at login
+b2/hadoku_scrape_sdk-0.1.10-py3-none-any.whl,real behaviour,package,scraper SDK: HTTP calls and a Discord notifier
+b2/lumina_svg_core-0.3.4.tar.gz,real behaviour,tests and tools,git and build commands in tests and release tools
+b2/maicroscopy_sandbox-0.3.1.tar.gz,real behaviour,tests,tests run subprocesses and exec a module source
+b2/olab_camera-0.1.1.tar.gz,real behaviour,tests,tests connect to a local stream server; one line is getsockname
+b2/papernym-0.1.4.tar.gz,real behaviour,package and tests,GUI opens files in Explorer or Finder
+b2/sonatabot-0.1.0-py3-none-any.whl,real behaviour,package,Discord bot calls search and music APIs
+b2/sonatabot-0.1.0.tar.gz,real behaviour,package,same code as its wheel
+b2/spanreed_bus-0.3.2-py3-none-any.whl,real behaviour,package,talks to a local socket and runs commands
+b2/spyglass_pro-1.1.0.tar.gz,real behaviour,package,OSINT tool: web requests and DNS lookups are its job
+b2/torchrl-0.15.0-cp312-cp312-manylinux_2_28_x86_64.whl,real behaviour,package,downloads datasets and assets; several lines are getsockname or own-hostname lookups
+b2/transtractor-0.16.0.tar.gz,real behaviour,tests,a test runs a subprocess

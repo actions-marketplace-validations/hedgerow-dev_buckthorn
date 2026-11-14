@@ -1,0 +1,27 @@
+
+### Held-out malicious archives (n=430; missing variant 0)
+- Variant flagged: 375/430 = 87.2% (83.7 to 90.0)
+- Variant not_verified: 1/430 = 0.2% (0.0 to 1.3); clean 54; error or timeout 0
+- Default flagged: 225/430 = 52.3% (47.6 to 57.0); not_verified 1
+- Added by the variant: 150; lost: 0
+- GuardDog threat: 295/430 = 68.6% (64.1 to 72.8)
+- Variant flagged and GuardDog threat 289; variant only 86; GuardDog only 6; neither 49
+- Either (variant flagged or GuardDog threat): 381/430 = 88.6% (85.3 to 91.3)
+- Rules on added flags: BKT-IMPORT-001 130, BKT-IMPORT-002 72, BKT-IMPORT-003 28, BKT-IMPORT-008 15, BKT-IMPORT-005 8, BKT-INSTALL-003 5, BKT-INSTALL-001 4, BKT-INSTALL-002 2
+
+### OSV first report on or after 2026-11-03 (n=38; missing variant 0)
+- Variant flagged: 34/38 = 89.5% (75.9 to 95.8)
+- Variant not_verified: 0/38 = 0.0% (0.0 to 9.2); clean 4; error or timeout 0
+- Default flagged: 25/38 = 65.8% (49.9 to 78.8); not_verified 0
+- Added by the variant: 9; lost: 0
+- GuardDog threat: 30/38 = 78.9% (63.7 to 88.9)
+- Variant flagged and GuardDog threat 30; variant only 4; GuardDog only 0; neither 4
+- Either (variant flagged or GuardDog threat): 34/38 = 89.5% (75.9 to 95.8)
+
+### The 50 triaged misses
+- no payload in the sample: now flagged 0 of 7
+- out of scope: payload runs only when the user calls it: now flagged 39 of 39
+- payload in a dependency: now flagged 0 of 2
+- payload in native code: now flagged 0 of 1
+- rule gap (in scope): now flagged 1 of 1
+- All: now flagged 40 of 50

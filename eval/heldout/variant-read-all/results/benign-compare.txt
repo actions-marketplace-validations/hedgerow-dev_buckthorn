@@ -1,0 +1,70 @@
+9ac80c6257a03666
+fa0ff81d8ef6bd74
+
+### b1 files (n=3834; missing variant 0)
+- Variant flagged: 1506/3834 = 39.3% (37.7 to 40.8)
+- Variant not_verified: 40/3834 = 1.0% (0.8 to 1.4); clean 2288; error or timeout 0
+- Default flagged: 232/3834 = 6.1% (5.3 to 6.9); not_verified 65
+- Added by the variant: 1274; lost: 0
+- GuardDog threat: 763/3834 = 19.9% (18.7 to 21.2)
+- Variant flagged and GuardDog threat 564; variant only 942; GuardDog only 199; neither 2129
+- Either (variant flagged or GuardDog threat): 1705/3834 = 44.5% (42.9 to 46.0)
+- Projects with a variant flag: 911/1999 = 45.6% (43.4 to 47.8); default 176/1999 = 8.8% (7.6 to 10.1)
+- sdist: variant flagged 875/1903 = 46.0% (43.8 to 48.2)
+- bdist_wheel: variant flagged 631/1931 = 32.7% (30.6 to 34.8)
+
+### b2 files (n=1889; missing variant 0)
+- Variant flagged: 1029/1889 = 54.5% (52.2 to 56.7)
+- Variant not_verified: 19/1889 = 1.0% (0.6 to 1.6); clean 841; error or timeout 0
+- Default flagged: 76/1889 = 4.0% (3.2 to 5.0); not_verified 44
+- Added by the variant: 953; lost: 0
+- GuardDog threat: 593/1889 = 31.4% (29.3 to 33.5)
+- Variant flagged and GuardDog threat 512; variant only 517; GuardDog only 81; neither 779
+- Either (variant flagged or GuardDog threat): 1110/1889 = 58.8% (56.5 to 61.0)
+- Projects with a variant flag: 580/1000 = 58.0% (54.9 to 61.0); default 54/1000 = 5.4% (4.2 to 7.0)
+- sdist: variant flagged 551/909 = 60.6% (57.4 to 63.7)
+- bdist_wheel: variant flagged 478/980 = 48.8% (45.7 to 51.9)
+
+### B1 and B2 files (n=5723; missing variant 0)
+- Variant flagged: 2535/5723 = 44.3% (43.0 to 45.6)
+- Variant not_verified: 59/5723 = 1.0% (0.8 to 1.3); clean 3129; error or timeout 0
+- Default flagged: 308/5723 = 5.4% (4.8 to 6.0); not_verified 109
+- Added by the variant: 2227; lost: 0
+- GuardDog threat: 1356/5723 = 23.7% (22.6 to 24.8)
+- Variant flagged and GuardDog threat 1076; variant only 1459; GuardDog only 280; neither 2908
+- Either (variant flagged or GuardDog threat): 2815/5723 = 49.2% (47.9 to 50.5)
+
+- Added flags only from tests, docs or examples folders: 237 of 2227
+- Rules on added flags: BKT-IMPORT-002 1381, BKT-IMPORT-001 1373, BKT-IMPORT-003 561, BKT-IMPORT-008 110, BKT-IMPORT-004 62, BKT-IMPORT-005 36, BKT-INSTALL-002 30, BKT-INSTALL-001 15, BKT-INSTALL-003 10, BKT-HIDE-002 7, BKT-EXFIL-002 4, BKT-INSTALL-004 1
+
+### Triage sample (seed 20261116)
+b1/aioice-0.13.0.tar.gz [["BKT-IMPORT-001", "aioice-0.13.0/examples/ice-client.py"]]
+b1/aiormq-7.2.5.tar.gz [["BKT-IMPORT-001", "aiormq-7.2.5/tests/docker_client.py"]]
+b1/apache_airflow_providers_fab-3.11.0-py3-none-any.whl [["BKT-IMPORT-001", "airflow/providers/fab/auth_manager/security_manager/override.py"]]
+b1/azure_mgmt_apimanagement-5.0.0.tar.gz [["BKT-IMPORT-003", "azure_mgmt_apimanagement-5.0.0/azure/mgmt/apimanagement/_serialization.py"]]
+b1/gcovr-8.8-py3-none-any.whl [["BKT-IMPORT-002", "gcovr/formats/coveralls/write.py"], ["BKT-IMPORT-002", "gcovr/formats/gcov/read.py"], ["BKT-IMPORT-002", "gcovr/formats/llvm/read.py"]]
+b1/newrelic-14.3.0.tar.gz [["BKT-IMPORT-001", "newrelic-14.3.0/newrelic/common/system_info.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/newrelic/common/utilization.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/newrelic/console.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/newrelic/packages/urllib3/util/connection.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/tests/adapter_gunicorn/test_aiohttp_app_factory.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/tests/adapter_gunicorn/test_asgi_app.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/tests/adapter_gunicorn/test_gaiohttp.py"], ["BKT-IMPORT-001", "newrelic-14.3.0/tests/adapter_uvicorn/test_uvicorn.py"]]
+b1/openai_whisper-20250625.tar.gz [["BKT-IMPORT-001", "openai_whisper-20250625/whisper/__init__.py"], ["BKT-IMPORT-002", "openai_whisper-20250625/whisper/audio.py"]]
+b1/pikepdf-10.18.0.tar.gz [["BKT-IMPORT-002", "pikepdf-10.18.0/bin/bump_version.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/misc/pdfa_differential.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/src/pikepdf/_methods.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/tests/conftest.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/tests/pdfa_samples.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/tests/test_image_access.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/tests/test_import_leaks.py"], ["BKT-IMPORT-002", "pikepdf-10.18.0/tests/test_io.py"]]
+b1/poethepoet-0.49.0-py3-none-any.whl [["BKT-IMPORT-002", "poethepoet/executor/base.py"], ["BKT-IMPORT-002", "poethepoet/executor/poetry.py"], ["BKT-IMPORT-002", "poethepoet/helpers/git.py"], ["BKT-IMPORT-002", "poethepoet/shutdown.py"]]
+b1/ppft-1.7.8.tar.gz [["BKT-IMPORT-002", "ppft-1.7.8/ppft/_pp.py"], ["BKT-IMPORT-002", "ppft-1.7.8/ppft/tests/__main__.py"], ["BKT-IMPORT-003", "ppft-1.7.8/ppft/__main__.py"], ["BKT-IMPORT-003", "ppft-1.7.8/ppft/common.py"]]
+b1/pydantic_ai_harness-0.68.0.tar.gz [["BKT-IMPORT-002", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/localstack/_container.py"], ["BKT-IMPORT-002", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/playwright/_toolset.py"], ["BKT-IMPORT-002", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/render_sandbox/_command_runner.py"], ["BKT-IMPORT-002", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/step_persistence/conversations.py"], ["BKT-IMPORT-003", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/_callable.py"], ["BKT-IMPORT-003", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/capability_creation/_validate.py"], ["BKT-IMPORT-005", "pydantic_ai_harness-0.68.0/pydantic_ai_harness/bubblewrap_sandbox/_workspace.py"]]
+b1/pygame-2.6.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl [["BKT-IMPORT-002", "pygame/_camera_opencv.py"], ["BKT-IMPORT-002", "pygame/sysfont.py"], ["BKT-IMPORT-002", "pygame/tests/docs_test.py"], ["BKT-IMPORT-002", "pygame/tests/run_tests__tests/run_tests__test.py"], ["BKT-IMPORT-003", "pygame/tests/test_utils/test_runner.py"]]
+b1/python-xlib-0.33.tar.gz [["BKT-IMPORT-001", "python-xlib-0.33/Xlib/support/unix_connect.py"], ["BKT-IMPORT-001", "python-xlib-0.33/Xlib/support/vms_connect.py"], ["BKT-IMPORT-001", "python-xlib-0.33/utils/tcpbug.py"], ["BKT-IMPORT-002", "python-xlib-0.33/Xlib/support/unix_connect.py"], ["BKT-IMPORT-002", "python-xlib-0.33/examples/run_examples.py"], ["BKT-IMPORT-002", "python-xlib-0.33/test/gen/genprottest.py"], ["BKT-INSTALL-002", "python-xlib-0.33/runtests.py"]]
+b1/qdrant_client-1.20.0-py3-none-any.whl [["BKT-IMPORT-001", "qdrant_client/common/version_check.py"]]
+b2/airx-1.28.0-py3-none-any.whl [["BKT-IMPORT-002", "aix/main.py"]]
+b2/babyseat-0.7.53.tar.gz [["BKT-IMPORT-001", "babyseat-0.7.53/membrane/ann.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/assets.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/auth.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/claims.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/cli.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/efstore.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/embed.py"], ["BKT-IMPORT-001", "babyseat-0.7.53/membrane/global_field.py"]]
+b2/coopagents-0.9.0.tar.gz [["BKT-IMPORT-001", "coopagents-0.9.0/src/oauth.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/src/p2p.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/src/skills/coopagents-space/scripts/verify_cloudflared.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/src/space_runtime.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/src/stripe_billing.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/tests/test_account_api.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/tests/test_agent_connect.py"], ["BKT-IMPORT-001", "coopagents-0.9.0/tests/test_billing_api.py"]]
+b2/damlforge-0.0.13-py3-none-any.whl [["BKT-IMPORT-002", "forge/cli/forge_dar.py"], ["BKT-IMPORT-002", "forge/stubgen/dar.py"]]
+b2/h2o_audit_trail-1.5.4.tar.gz [["BKT-IMPORT-001", "h2o_audit_trail-1.5.4/src/h2o_audit_trail/login.py"]]
+b2/hadoku_scrape_sdk-0.1.10-py3-none-any.whl [["BKT-IMPORT-001", "hadoku_sdk/api/middleware/whoami.py"], ["BKT-IMPORT-001", "hadoku_sdk/desktop.py"], ["BKT-IMPORT-001", "hadoku_sdk/observability/discord_notify.py"], ["BKT-IMPORT-001", "hadoku_sdk/scrapers/utils/cloudflare_kv.py"], ["BKT-IMPORT-002", "hadoku_sdk/browser/cdpfree.py"], ["BKT-IMPORT-002", "hadoku_sdk/browser/manager.py"]]
+b2/lumina_svg_core-0.3.4.tar.gz [["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tests/test_build_provenance.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tests/test_distribution_contract.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tests/test_package_distribution.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tests/test_release.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tools/alpha_raster_audit.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tools/benchmark.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tools/package_distribution.py"], ["BKT-IMPORT-002", "lumina_svg_core-0.3.4/tools/prepare_release.py"]]
+b2/maicroscopy_sandbox-0.3.1.tar.gz [["BKT-IMPORT-002", "maicroscopy_sandbox-0.3.1/tests/test_maicroscopy_sandbox.py"], ["BKT-IMPORT-003", "maicroscopy_sandbox-0.3.1/tests/test_maicroscopy_sandbox.py"]]
+b2/olab_camera-0.1.1.tar.gz [["BKT-IMPORT-001", "olab_camera-0.1.1/tests/test_camera_stream_lifecycle.py"], ["BKT-IMPORT-001", "olab_camera-0.1.1/tests/test_streaming_tls.py"], ["BKT-IMPORT-002", "olab_camera-0.1.1/tests/test_camera_realsense.py"], ["BKT-IMPORT-002", "olab_camera-0.1.1/tests/test_openmv_absent_import.py"], ["BKT-IMPORT-002", "olab_camera-0.1.1/tests/test_ros_absent_import.py"], ["BKT-IMPORT-003", "olab_camera-0.1.1/tests/test_openmv_movement.py"], ["BKT-IMPORT-003", "olab_camera-0.1.1/tests/test_openmv_profiles.py"]]
+b2/papernym-0.1.4.tar.gz [["BKT-IMPORT-002", "papernym-0.1.4/src/papernym/gui/app.py"], ["BKT-IMPORT-002", "papernym-0.1.4/src/papernym/gui/common.py"], ["BKT-IMPORT-002", "papernym-0.1.4/tests/test_lock.py"]]
+b2/sonatabot-0.1.0-py3-none-any.whl [["BKT-IMPORT-001", "api/google_search.py"], ["BKT-IMPORT-001", "api/last_fm.py"], ["BKT-IMPORT-001", "api/sputnik.py"], ["BKT-IMPORT-001", "cogs/users/users.py"]]
+b2/sonatabot-0.1.0.tar.gz [["BKT-IMPORT-001", "sonatabot-0.1.0/bot/api/google_search.py"], ["BKT-IMPORT-001", "sonatabot-0.1.0/bot/api/last_fm.py"], ["BKT-IMPORT-001", "sonatabot-0.1.0/bot/api/sputnik.py"], ["BKT-IMPORT-001", "sonatabot-0.1.0/bot/cogs/users/users.py"]]
+b2/spanreed_bus-0.3.2-py3-none-any.whl [["BKT-IMPORT-001", "spanreed/codex_client.py"], ["BKT-IMPORT-002", "spanreed/bridge.py"], ["BKT-IMPORT-002", "spanreed/cli.py"], ["BKT-IMPORT-002", "spanreed/codex_client.py"], ["BKT-IMPORT-002", "spanreed/codex_doctor.py"]]
+b2/spyglass_pro-1.1.0.tar.gz [["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/modules/lens_extender/osint.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/modules/spyglass_osint/investigation.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/modules/spyglass_osint/ip.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/modules/spyglass_osint/website.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/social/platforms/bluesky.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/social/platforms/github.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/social/platforms/gitlab.py"], ["BKT-IMPORT-001", "spyglass_pro-1.1.0/spyglass_pro/social/platforms/keybase.py"]]
+b2/torchrl-0.15.0-cp312-cp312-manylinux_2_28_x86_64.whl [["BKT-IMPORT-001", "torchrl/_comm/distributed.py"], ["BKT-IMPORT-001", "torchrl/collectors/distributed/default_configs.py"], ["BKT-IMPORT-001", "torchrl/collectors/distributed/generic.py"], ["BKT-IMPORT-001", "torchrl/collectors/distributed/rpc.py"], ["BKT-IMPORT-001", "torchrl/collectors/distributed/sync.py"], ["BKT-IMPORT-001", "torchrl/collectors/llm/weight_update/vllm.py"], ["BKT-IMPORT-001", "torchrl/data/datasets/d4rl.py"], ["BKT-IMPORT-001", "torchrl/data/datasets/gen_dgrl.py"]]
+b2/transtractor-0.16.0.tar.gz [["BKT-IMPORT-002", "transtractor-0.16.0/tests/python/test_structs__transaction.py"]]

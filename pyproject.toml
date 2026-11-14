@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "buckthorn"
+version = "0.1.0"
+description = "Static checks for open-source Python and npm packages: finds install-time, start-up and import-time code before you install."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Hedgerow", email = "hello@hedgerow.dev" }]
+dependencies = ["packaging>=24"]  # wheel tag matching, as pip does it (Apache-2.0 OR BSD-2)
+
+[project.urls]
+Homepage = "https://github.com/hedgerow-dev/buckthorn"
+Source = "https://github.com/hedgerow-dev/buckthorn"
+Issues = "https://github.com/hedgerow-dev/buckthorn/issues"
+
+[project.scripts]
+buckthorn = "buckthorn.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9.0", "ruff>=0.4,<1.0", "mcp>=2.3,<3"]  # mcp: the stdio round-trip test
+# `buckthorn mcp`: the official MCP Python SDK (MIT). Optional, so the core
+# keeps one dependency.
+mcp = ["mcp>=2.3,<3"]
+
+# The sdist carries what the tests need to run, not eval/ (corpus results) or
+# the CI and action files. README, LICENSE and pyproject.toml are always added.
+[tool.hatch.build.targets.sdist]
+include = ["/buckthorn", "/tests", "/docs", "/SPEC.md", "/.pre-commit-hooks.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests construct deliberately unsafe fixtures. That is the fixture, not a bug.
+"tests/*" = ["S", "B011"]
+# One-off corpus evaluation scripts: long hand-written triage notes, and they
+# run buckthorn as a subprocess on purpose. Seeded random sampling is the
+# method, and the held-out scripts stay as they were run, so their results
+# can be reproduced.
+"eval/*" = ["E501", "E741", "S310", "S603", "S607", "S311", "B905", "B023", "UP017"]

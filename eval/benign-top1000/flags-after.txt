@@ -1,0 +1,286 @@
+files: 1875 {'clean': 1732, 'not_verified': 24, 'flagged': 119}
+
+  20 BKT-IMPORT-003 runs at import: calls exec
+        dill-0.4.1-py3-none-any.whl :: dill/objtypes.py
+        dill-0.4.1.tar.gz :: dill-0.4.1/dill/objtypes.py
+        future-1.0.0-py3-none-any.whl :: future/utils/__init__.py
+        future-1.0.0.tar.gz :: future-1.0.0/src/future/utils/__init__.py
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__threading_2.py
+        ghapi-2.1.5-py3-none-any.whl :: ghapi/event.py
+        ghapi-2.1.5.tar.gz :: ghapi-2.1.5/ghapi/event.py
+        py-1.11.0-py2.py3-none-any.whl :: py/_builtin.py
+        py-1.11.0.tar.gz :: py-1.11.0/py/_builtin.py
+        reportlab-5.1.0-py3-none-any.whl :: reportlab/lib/rl_accel.py
+        reportlab-5.1.0.tar.gz :: reportlab-5.1.0/src/reportlab/lib/rl_accel.py
+        scipy-1.18.1.tar.gz :: scipy-1.18.1/scipy/stats/_distn_infrastructure.py
+        scipy-1.18.1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl :: scipy/stats/_distn_infrastructure.py
+        twisted-26.10.0.tar.gz :: twisted-26.10.0/src/twisted/conch/insults/helper.py
+        twisted-26.10.0.tar.gz :: twisted-26.10.0/src/twisted/conch/insults/insults.py
+        twisted-26.10.0.tar.gz :: twisted-26.10.0/src/twisted/conch/recvline.py
+        twisted-26.10.0-py3-none-any.whl :: twisted/conch/insults/helper.py
+        twisted-26.10.0-py3-none-any.whl :: twisted/conch/insults/insults.py
+        twisted-26.10.0-py3-none-any.whl :: twisted/conch/recvline.py
+        twisted-26.10.0-py3-none-any.whl :: twisted/conch/test/test_insults.py
+
+  13 BKT-INSTALL-002 runs at install: calls subprocess.run
+        ast_serialize-0.13.1.tar.gz :: ast_serialize-0.13.1/bump_ruff_deps.py
+        asyncpg-0.32.0.tar.gz :: asyncpg-0.32.0/setup.py
+        cmake-4.4.4.tar.gz :: cmake-4.4.4/_build_backend/backend.py
+        ddtrace-4.16.3.tar.gz :: ddtrace-4.16.3/setup.py
+        graphviz-0.21.tar.gz :: graphviz-0.21/lint-code.py
+        llvmlite-0.50.0.tar.gz :: llvmlite-0.50.0/setup.py
+        multidict-7.2.1.tar.gz :: multidict-7.2.1/setup.py
+        psycopg2-2.9.13.tar.gz :: psycopg2-2.9.13/setup.py
+        psycopg2_binary-2.9.13.tar.gz :: psycopg2-binary-2.9.13/setup.py
+        pybase64-1.5.1.tar.gz :: pybase64-1.5.1/setup.py
+        pymupdf-2.1.tar.gz :: pymupdf-2.1/setup.py
+        semgrep-1.183.0.tar.gz :: semgrep-1.183.0/setup.py
+        uvloop-0.23.0.tar.gz :: uvloop-0.23.0/setup.py
+
+   9 BKT-INSTALL-002 runs at install: calls subprocess.check_call
+        babel-2.18.0.tar.gz :: babel-2.18.0/setup.py
+        blis-1.3.4.tar.gz :: blis-1.3.4/setup.py
+        debugpy-1.8.22.tar.gz :: debugpy-1.8.22/setup.py
+        librt-0.16.0.tar.gz :: librt-0.16.0/setup.py
+        opencv_python-5.0.0.93.tar.gz :: opencv_python-5.0.0.93/setup.py
+        opencv_python_headless-5.0.0.93.tar.gz :: opencv_python_headless-5.0.0.93/setup.py
+        pycares-5.2.1.tar.gz :: pycares-5.2.1/setup.py
+        pydeck-0.9.3.tar.gz :: pydeck-0.9.3/setup.py
+        pynacl-1.6.2.tar.gz :: pynacl-1.6.2/setup.py
+
+   8 BKT-BIN-001 native library in a wheel tagged pure Python
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/_pydevd_bundle/pydevd_cython.cp39-win_amd64.pyd
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/_pydevd_frame_eval/pydevd_frame_evaluator.cp39-win_amd64.pyd
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/pydevd_attach_to_process/attach.dylib
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/pydevd_attach_to_process/attach_amd64.dll
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/pydevd_attach_to_process/attach_linux_amd64.so
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/pydevd_attach_to_process/attach_x86.dll
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/pydevd_attach_to_process/run_code_on_dllmain_amd64.dll
+        debugpy-1.8.22-py2.py3-none-any.whl :: debugpy/_vendored/pydevd/pydevd_attach_to_process/run_code_on_dllmain_x86.dll
+
+   7 BKT-IMPORT-002 runs at import: calls subprocess.run
+        mlflow-3.18.0-py3-none-any.whl :: mlflow/assistant/skills/tests/scripts/setup_agent_eval.py
+        mlflow-3.18.0-py3-none-any.whl :: mlflow/assistant/skills/tests/scripts/setup_tracing_test.py
+        mlflow_skinny-3.18.0-py3-none-any.whl :: mlflow/assistant/skills/tests/scripts/setup_agent_eval.py
+        mlflow_skinny-3.18.0-py3-none-any.whl :: mlflow/assistant/skills/tests/scripts/setup_tracing_test.py
+        sphinx-9.2.0-py3-none-any.whl :: sphinx/__init__.py
+        sphinx-9.2.0.tar.gz :: sphinx-9.2.0/sphinx/__init__.py
+        torch-2.15.0-cp312-cp312-manylinux_2_28_x86_64.whl :: torch/_vendor/quack/cache/_pool_preload.py
+
+   6 BKT-IMPORT-002 runs at import: calls subprocess.run (in F), called at module level)
+        ddtrace-4.16.3.tar.gz :: ddtrace-4.16.3/ddtrace/appsec/_iast/_taint_tracking/_vendor/pybind11/tools/make_changelog.py
+        sphinx-9.2.0.tar.gz :: sphinx-9.2.0/utils/bump_docker.py
+        sphinx-9.2.0.tar.gz :: sphinx-9.2.0/utils/generate_js_fixtures.py
+        trio-0.35.0-py3-none-any.whl :: trio/_tests/check_type_completeness.py
+        trio-0.35.0.tar.gz :: trio-0.35.0/src/trio/_tests/check_type_completeness.py
+        websockets-17.4-py3-none-any.whl :: websockets/version.py
+
+   6 BKT-IMPORT-002 runs at import: calls subprocess.Popen (in F), called at module level)
+        ecdsa-0.19.2-py2.py3-none-any.whl :: ecdsa/test_ecdh.py
+        ecdsa-0.19.2-py2.py3-none-any.whl :: ecdsa/test_pyecdsa.py
+        ecdsa-0.19.2.tar.gz :: ecdsa-0.19.2/src/ecdsa/test_ecdh.py
+        ecdsa-0.19.2.tar.gz :: ecdsa-0.19.2/src/ecdsa/test_pyecdsa.py
+        papermill-2.7.0-py3-none-any.whl :: papermill/tests/test_cli.py
+        passlib-1.7.4-py2.py3-none-any.whl :: passlib/tests/test_apache.py
+
+   5 BKT-INSTALL-002 runs at install: calls subprocess.check_output
+        av-19.0.2.tar.gz :: av-19.0.2/setup.py
+        pillow_heif-1.8.1.tar.gz :: pillow_heif-1.8.1/setup.py
+        pyproj-3.8.0.tar.gz :: pyproj-3.8.0/setup.py
+        spacy-3.8.18.tar.gz :: spacy-3.8.18/setup.py
+        sympy-1.14.0.tar.gz :: sympy-1.14.0/setup.py
+
+   5 BKT-IMPORT-003 runs at import: calls compile; calls exec
+        datadog-0.56.0-py2.py3-none-any.whl :: datadog/dogstatsd/context_async.py
+        datadog-0.56.0.tar.gz :: datadog-0.56.0/datadog/dogstatsd/context_async.py
+        ddtrace-4.16.3.tar.gz :: ddtrace-4.16.3/ddtrace/vendor/dogstatsd/context_async.py
+        ddtrace-4.16.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl :: ddtrace/vendor/dogstatsd/context_async.py
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/testing/monkey_test.py
+
+   5 BKT-IMPORT-002 runs at import: calls subprocess.Popen
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__environ.py
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__issue6.py
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__monkey_sigchld_3.py
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__monkey_sigchld_wakeup_fd.py
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__subprocess_interrupted.py
+
+   5 BKT-INSTALL-003 runs at install: calls exec
+        graphviz-0.21.tar.gz :: graphviz-0.21/try-examples.py
+        outcome-1.3.0.post0.tar.gz :: outcome-1.3.0.post0/setup.py
+        reportlab-5.1.0.tar.gz :: reportlab-5.1.0/setup.py
+        setuptools-84.2.1.tar.gz :: setuptools-84.2.1/setuptools/build_meta.py
+        typing_inspect-0.9.0.tar.gz :: typing_inspect-0.9.0/test_typing_inspect.py
+
+   4 BKT-INSTALL-002 runs at install: calls os.system
+        cached_property-2.0.1.tar.gz :: cached_property-2.0.1/setup.py
+        configargparse-1.9.0.tar.gz :: configargparse-1.9.0/setup.py
+        requests-oauthlib-2.0.0.tar.gz :: requests-oauthlib-2.0.0/setup.py
+        requests-toolbelt-1.0.0.tar.gz :: requests-toolbelt-1.0.0/setup.py
+
+   4 BKT-INSTALL-002 runs at install: calls subprocess.call
+        daff-1.4.2.tar.gz :: daff-1.4.2/setup.py
+        defusedxml-0.7.1.tar.gz :: defusedxml-0.7.1/setup.py
+        reportlab-5.1.0.tar.gz :: reportlab-5.1.0/setup.py
+        simplejson-4.2.0.tar.gz :: simplejson-4.2.0/setup.py
+
+   3 BKT-INSTALL-002 runs at install: calls subprocess.check_call; calls subprocess.check_output
+        awscrt-0.38.1.tar.gz :: awscrt-0.38.1/setup.py
+        mysqlclient-2.3.0.tar.gz :: mysqlclient-2.3.0/setup.py
+        sentencepiece-0.2.3.tar.gz :: sentencepiece-0.2.3/setup.py
+
+   3 BKT-PTH-001 .pth line runs code at every Python start
+        coloredlogs-15.0.1-py2.py3-none-any.whl :: coloredlogs.pth
+        coverage-7.17.2-py3-none-any.whl :: a1_coverage.pth
+        setuptools-84.2.1-py3-none-any.whl :: distutils-precedence.pth
+
+   3 BKT-INSTALL-002 runs at install: calls subprocess.run (in F), called at install)
+        duckdb-2.0.0.tar.gz :: duckdb-2.0.0/duckdb_packaging/build_info.py
+        pycryptodome-4.3.0.tar.gz :: pycryptodome-4.3.0/compiler_opt.py
+        pymssql-2.4.6.tar.gz :: pymssql-2.4.6/dev/ccompiler.py
+
+   3 BKT-INSTALL-003 runs at install: exec of a file it cannot read here
+        frozendict-2.5.1.tar.gz :: frozendict-2.5.1/setup.py
+        pathvalidate-3.3.1.tar.gz :: pathvalidate-3.3.1/setup.py
+        pdfplumber-0.11.10.tar.gz :: pdfplumber-0.11.10/setup.py
+
+   3 BKT-INSTALL-002 runs at install: calls subprocess.Popen
+        grpcio-1.85.1.tar.gz :: grpcio-1.85.1/setup.py
+        grpcio_tools-1.85.1.tar.gz :: grpcio_tools-1.85.1/setup.py
+        psutil-7.2.2.tar.gz :: psutil-7.2.2/setup.py
+
+   3 BKT-INSTALL-002 runs at install: calls subprocess.Popen (in F), called at install)
+        lxml-6.1.3.tar.gz :: lxml-6.1.3/setupinfo.py
+        passlib-1.7.4.tar.gz :: passlib-1.7.4/passlib/_setup/stamp.py
+        sympy-1.14.0.tar.gz :: sympy-1.14.0/sympy/testing/runtests.py
+
+   3 BKT-INSTALL-003 runs at install: calls eval
+        mccabe-0.7.0.tar.gz :: mccabe-0.7.0/setup.py
+        pycryptodomex-3.24.1.tar.gz :: pycryptodomex-3.24.1/setup.py
+        pyflakes-4.1.0.tar.gz :: pyflakes-4.1.0/setup.py
+
+   3 BKT-IMPORT-002 runs at import: calls subprocess.check_output
+        networkx-3.7.tar.gz :: networkx-3.7/networkx/conftest.py
+        networkx-3.7-py3-none-any.whl :: networkx/conftest.py
+        networkx-3.7-py3-none-any.whl :: networkx/drawing/tests/test_pydot.py
+
+   2 BKT-INSTALL-008 reads credentials or the whole environment and uses the network at install
+        cmake-4.4.4.tar.gz :: cmake-4.4.4/_build_backend/backend.py
+        ddtrace-4.16.3.tar.gz :: ddtrace-4.16.3/setup.py
+
+   2 BKT-INSTALL-001 runs at install: calls urllib.request.urlopen
+        cmake-4.4.4.tar.gz :: cmake-4.4.4/_build_backend/backend.py
+        reportlab-5.1.0.tar.gz :: reportlab-5.1.0/setup.py
+
+   2 BKT-IMPORT-001 runs at import: calls socket.socket().connect; calls socket.socket().sendall
+        execnet-2.1.2-py3-none-any.whl :: execnet/script/quitserver.py
+        execnet-2.1.2.tar.gz :: execnet-2.1.2/src/execnet/script/quitserver.py
+
+   2 BKT-IMPORT-001 runs at import: calls socket.socket().connect (in F), called at module level); calls socket.socket().recv (in 
+        execnet-2.1.2-py3-none-any.whl :: execnet/script/shell.py
+        execnet-2.1.2.tar.gz :: execnet-2.1.2/src/execnet/script/shell.py
+
+   2 BKT-IMPORT-001 runs at import: calls socket.socket().accept (in F), called at module level); calls socket.socket().fileno (in
+        execnet-2.1.2-py3-none-any.whl :: execnet/script/socketserver.py
+        execnet-2.1.2.tar.gz :: execnet-2.1.2/src/execnet/script/socketserver.py
+
+   2 BKT-IMPORT-003 runs at import: calls compile
+        google_re2-1.1.20251105-1-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl :: re2/__init__.py
+        google_re2-1.1.20251105.tar.gz :: google_re2-1.1.20251105/re2/__init__.py
+
+   2 BKT-PTH-002 .pth line runs at every Python start and touches sys.modules
+        google_cloud_aiplatform-2.7.0-py2.py3-none-any.whl :: google_cloud_aiplatform-2.7.0-py3.12-nspkg.pth
+        google_cloud_aiplatform-2.7.0-py2.py3-none-any.whl :: google_cloud_aiplatform-2.7.0-py3.12-nspkg.pth
+
+   2 BKT-HIDE-002 decodes a N-character blob
+        python_pptx-1.0.2-py3-none-any.whl :: pptx/media.py
+        python_pptx-1.0.2.tar.gz :: python_pptx-1.0.2/src/pptx/media.py
+
+   2 BKT-INSTALL-002 runs at install: calls os.system; calls subprocess.check_output
+        ruamel_yaml_clib-0.2.15.tar.gz :: ruamel.yaml.clib-0.2.15/setup.py
+        ruamel_yaml-0.19.1.tar.gz :: ruamel.yaml-0.19.1/setup.py
+
+   2 BKT-IMPORT-002 runs at import: calls subprocess.check_output (in F), called at module level)
+        scikit_image-0.26.0-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl :: skimage/__init__.py
+        scikit_image-0.26.0.tar.gz :: scikit_image-0.26.0/src/skimage/__init__.py
+
+   2 BKT-INSTALL-002 runs at install: calls subprocess.check_output (in F), called at install); calls subprocess.check_output (in F
+        sympy-1.14.0.tar.gz :: sympy-1.14.0/sympy/parsing/autolev/_build_autolev_antlr.py
+        sympy-1.14.0.tar.gz :: sympy-1.14.0/sympy/parsing/latex/_build_latex_antlr.py
+
+   1 BKT-INSTALL-002 runs at install: calls os.popen; calls subprocess.Popen
+        cffi-2.1.1.tar.gz :: cffi-2.1.1/setup.py
+
+   1 BKT-INSTALL-003 runs at install: compile of a file it cannot read here; exec of a file it cannot read here
+        coverage-7.17.2.tar.gz :: coverage-7.17.2/setup.py
+
+   1 BKT-IMPORT-003 runs at import: exec of a file it cannot read here
+        cryptography-50.0.2.tar.gz :: cryptography-50.0.2/src/_cffi_src/utils.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.Popen (in F), called at module level); calls subprocess.check_call (in F), c
+        cython-3.3.1.tar.gz :: cython-3.3.1/runtests.py
+
+   1 BKT-INSTALL-002 runs at install: calls os.system; calls subprocess.check_call
+        cython-3.3.1.tar.gz :: cython-3.3.1/setup.py
+
+   1 BKT-INSTALL-001 runs at install: calls urllib.request.urlretrieve; runs a command that fetches (https://)
+        ddtrace-4.16.3.tar.gz :: ddtrace-4.16.3/setup.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.Popen; calls subprocess.check_call
+        fonttools-4.68.0.tar.gz :: fonttools-4.68.0/setup.py
+
+   1 BKT-IMPORT-002 runs at import: calls os.popen
+        gevent-26.9.0-cp312-cp312-manylinux_2_28_x86_64.whl :: gevent/tests/test__monkey_sigchld_2.py
+
+   1 BKT-INSTALL-003 runs at install: calls execfile
+        ipython-9.18.1.tar.gz :: ipython-9.18.1/setupbase.py
+
+   1 BKT-INSTALL-002 runs at install: calls os.system (in F), called at install)
+        ipython-9.18.1.tar.gz :: ipython-9.18.1/setupbase.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.Popen; calls subprocess.run
+        lupa-2.8.tar.gz :: lupa-2.8/setup.py
+
+   1 BKT-IMPORT-001 runs at import: calls urllib.request.urlopen (in F), called at module level)
+        matplotlib-3.11.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl :: matplotlib/__init__.py
+
+   1 BKT-INSTALL-003 runs at install: execs lib/mysql/connector/version.py
+        mysql_connector_python-26.10.0.tar.gz :: mysql_connector_python-26.10.0/cpydist/__init__.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.check_output; calls subprocess.run
+        numba-0.68.1.tar.gz :: numba-0.68.1/setup.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.Popen; calls subprocess.check_output
+        pillow-13.0.0.tar.gz :: pillow-13.0.0/setup.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.getoutput
+        pymssql-2.4.6.tar.gz :: pymssql-2.4.6/setup.py
+
+   1 BKT-INSTALL-002 runs at install: calls os.popen
+        pyodbc-5.3.0.tar.gz :: pyodbc-5.3.0/setup.py
+
+   1 BKT-INSTALL-001 runs at install: calls urllib.request.urlretrieve
+        pymupdf-2.1.tar.gz :: pymupdf-2.1/setup.py
+
+   1 BKT-INSTALL-003 runs at install: execs respx
+        respx-0.23.1.tar.gz :: respx-0.23.1/setup.py
+
+   1 BKT-IMPORT-002 runs at import: calls subprocess.call (in F), called at module level)
+        sympy-1.14.0-py3-none-any.whl :: sympy/external/tests/test_codegen.py
+
+   1 BKT-IMPORT-001 runs at import: calls socket.socket().connect (in F), called at module level); calls socket.socket().getsockna
+        twisted-26.10.0-py3-none-any.whl :: twisted/test/test_ftp.py
+
+   1 BKT-HIDE-002 decodes a N-character blob; decodes a N-character blob; decodes a N-character blob
+        twisted-26.10.0-py3-none-any.whl :: twisted/conch/test/keydata.py
+
+   1 BKT-IMPORT-001 runs at import: calls socket.getaddrinfo (in F), called at module level)
+        urllib3-2.8.0.tar.gz :: urllib3-2.8.0/dummyserver/socketserver.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.run (in F), called at module level)
+        websockets-17.4.tar.gz :: websockets-17.4/src/websockets/version.py
+
+   1 BKT-INSTALL-003 runs at install: execs xxhash
+        xxhash-4.0.2.tar.gz :: xxhash-4.0.2/setup.py
+
+   1 BKT-INSTALL-002 runs at install: calls subprocess.Popen (in F), called at module level)
+        zstandard-0.25.0.tar.gz :: zstandard-0.25.0/make_cffi.py
