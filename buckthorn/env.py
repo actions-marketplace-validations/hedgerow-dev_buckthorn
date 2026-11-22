@@ -57,19 +57,24 @@ def _scan_distribution(site: Path, dist_info: Path) -> tuple[Result, set[str]]:
     if not record.is_file():
         message = "installed without a RECORD, so its files are unknown"
         return Result(label, "", [Finding("BKT-SKIP-005", message, Severity.INFO, label)]), set()
-    rows = list(csv.reader(record.read_text(encoding="utf-8", errors="replace").splitlines()))
+    try:
+        rows = list(csv.reader(record.read_text(encoding="utf-8", errors="replace").splitlines()))
+    except csv.Error as exc:  # a field past csv's limit
+        message = f"RECORD could not be read ({exc}), so its files are unknown"
+        return Result(label, "", [Finding("BKT-SKIP-005", message, Severity.INFO, label)]), set()
     owned = set()
     for row in rows:
         relative = posixpath.normpath(row[0]) if row else ".."
         if not relative.startswith(("..", "/")):  # bin/ scripts and the like are outside
             owned.add(relative)
-    if _is_editable(dist_info):
-        message = "editable install of a local project, not checked"
-        return Result(label, "", [Finding("BKT-ENV-002", message, Severity.INFO, label)]), owned
-
     site_real = site.resolve()
     members: list[tuple[str, bytes]] = []
     findings: list[Finding] = []
+    # Noted, but the files RECORD lists are still read: a wheel can ship its own
+    # direct_url.json, so the marker alone is no reason to trust a distribution.
+    if _is_editable(dist_info):
+        message = "editable install: the project's own code outside this environment is not read"
+        findings.append(Finding("BKT-ENV-002", message, Severity.INFO, label))
     for row in rows:
         relative = posixpath.normpath(row[0]) if row else ".."
         if relative not in owned:

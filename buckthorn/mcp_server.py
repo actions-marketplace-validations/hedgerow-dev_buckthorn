@@ -48,8 +48,9 @@ def check_release(name: str, version: str) -> dict[str, Any]:
 
 
 def check_mcp_config(contents: str) -> dict[str, Any]:
-    """Check the PyPI package behind every server an MCP config (its file contents)
-    launches. Raises ValueError for text that is not an MCP config."""
+    """Check every PyPI package an MCP config (its file contents) would install:
+    each server, and the dependencies uvx or pipx would install with it.
+    Raises ValueError for text that is not an MCP config."""
     try:
         servers = mcp_config.servers(contents)
     except ValueError as exc:
@@ -110,10 +111,11 @@ def serve() -> None:
         claude_desktop_config.json) before an agent loads it.
 
         For each server it launches with uvx, uv or pipx, fetches the PyPI package
-        that would run, checks its hash and scans it without installing it. npm,
-        container and local servers are reported as not checked. Returns JSON with
-        a verdict (clean, flagged or not_verified) and the findings. Values from
-        the config (env, arguments, URLs) are never echoed back.
+        that would run and the dependencies that launcher would install with it,
+        checks their hashes and scans them without installing or building anything.
+        npm, container and local servers are reported as not checked. Returns JSON
+        with a verdict (clean, flagged or not_verified) and the findings. Values
+        from the config (env, arguments, URLs) are never echoed back.
         """
         try:
             return json.dumps(check_mcp_config(contents))

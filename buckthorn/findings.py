@@ -50,6 +50,7 @@ COVERAGE_RULE_IDS = frozenset(
         "BKT-SKIP-006",  # a model repo's config or remote code could not be read or fetched
         "BKT-LOCK-002",  # a pinned artifact could not be found, fetched or named safely
         "BKT-MCP-001",  # what an MCP server runs could not be checked
+        "BKT-MCP-005",  # an MCP server's dependencies could not be checked
     }
 )
 
@@ -84,14 +85,20 @@ def new_findings(
     """Findings in new that old does not have: what an upgrade adds.
 
     Paths and messages are compared with each side's version taken out, so
-    pkg-1.0/setup.py and pkg-1.1/setup.py are the same file. A finding whose
-    message changed (a new call of a kind already reported) counts as new.
+    pkg-1.0/setup.py and pkg-1.1/setup.py are the same file. The hashes of the
+    lines a finding was seen on are compared too. A finding whose message or lines
+    changed (another call of a kind already reported) counts as new; one that
+    only moved does not. Without line hashes, the number of lines is compared.
+    Coverage gaps are always kept: what was not read in the old version says
+    nothing about the new one.
     """
 
-    def key(finding: Finding, version: str) -> tuple[str, str, str]:
+    def key(finding: Finding, version: str) -> tuple[object, ...]:
         first, sep, rest = finding.file_path.partition("/")
         path = first.replace(f"-{version}", "") + sep + rest
-        return finding.rule_id, path, finding.message.replace(version, "")
+        hashes = sorted(finding.metadata.get("line_hashes") or ())
+        count = len(finding.metadata.get("lines") or ())
+        return finding.rule_id, path, finding.message.replace(version, ""), str(hashes), count
 
     seen = {key(f, old_version) for f in old}
-    return [f for f in new if key(f, new_version) not in seen]
+    return [f for f in new if f.rule_id in COVERAGE_RULE_IDS or key(f, new_version) not in seen]

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.hedgerow-dev/buckthorn",
+  "description": "Static checks for install, start-up and import-time code in Python and npm packages.",
+  "title": "Buckthorn",
+  "websiteUrl": "https://github.com/hedgerow-dev/buckthorn",
+  "repository": {
+    "url": "https://github.com/hedgerow-dev/buckthorn",
+    "source": "github",
+    "id": "1457679947"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "buckthorn",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--with",
+          "value": "buckthorn[mcp]==0.1.0",
+          "description": "Install the mcp extra. uvx does not enable extras on its own, and the mcp subcommand imports the MCP SDK."
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}

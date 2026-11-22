@@ -16,3 +16,15 @@ def test_every_rule_in_the_code_is_documented():
     built = {f"BKT-{when}-{n}" for when in ("INSTALL", "IMPORT", "HF") for n in numbers}
     documented = _ids((ROOT / "docs" / "rules.md").read_text())
     assert (_ids(code) | built) - documented == set()
+
+
+def test_server_json_names_the_release_version_everywhere():
+    import json
+    import tomllib
+
+    release = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    server = json.loads((ROOT / "server.json").read_text())
+    (package,) = server["packages"]
+    values = [a["value"] for a in package["runtimeArguments"]]
+    pins = [v.partition("==")[2] for v in values if "==" in v]
+    assert [server["version"], package["version"], *pins] == [release] * 3

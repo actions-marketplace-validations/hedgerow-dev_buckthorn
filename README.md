@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.hedgerow-dev/buckthorn -->
+
 <div align="center">
 
 # Buckthorn
@@ -30,8 +32,8 @@ Hedgerow, next to [Hayward](https://github.com/hedgerow-dev/hayward) for model f
 ## What it is for
 
 **Your agent's MCP config.** An agent starts every server in `.mcp.json` with
-your credentials, and `uvx some-server` pulls whatever was released that day.
-`buckthorn check .mcp.json` reads the release that would run.
+your credentials, and `uvx some-server` pulls whatever was released that day,
+dependencies included. `buckthorn check .mcp.json` reads that install set.
 
 **Upgrades.** `buckthorn diff requests==2.32.3 requests==2.32.4` shows only
 what the new version adds. If a maintainer account is taken over, the new
@@ -55,7 +57,7 @@ buckthorn scan pkg-1.2.0-py3-none-any.whl          # one wheel or sdist
 buckthorn scan ./dist                              # a folder of them
 buckthorn scan left-pad-1.3.0.tgz                  # an npm tarball (preview)
 buckthorn check uv.lock                            # every pinned dependency
-buckthorn check .mcp.json                          # an agent's MCP servers
+buckthorn check .mcp.json                          # an agent's MCP servers (preview)
 buckthorn diff requests==2.32.3 requests==2.32.4   # only what an upgrade adds
 buckthorn scan --format json ./dist                # machine-readable
 ```
@@ -107,7 +109,7 @@ the rules were written against that data. The full write-up is in
 five combinations, such as fetching code and running it. It is off by
 default, because it has not been tested on unseen data yet.
 
-## Check an agent's MCP config
+## Check an agent's MCP config (preview)
 
 An agent starts every MCP server in its config as soon as it loads it, with
 your credentials, and nobody looks at what `uvx some-server` pulls in that
@@ -120,11 +122,14 @@ buckthorn check ~/.cursor/mcp.json             # Cursor (Windsurf and Claude Des
 ```
 
 For each server launched with `uvx`, `uv run --with` or `pipx run`, it fetches
-the PyPI release that would run and scans it. Only the server package is
-read, not its dependencies. Servers with no version pinned are counted in
-the summary, since the next release runs at the next start. npm and Docker
-servers are reported as not checked yet. Values from `env`, arguments and
-URLs are never printed.
+the PyPI release that would run and scans it, then every package that `uvx` or
+`pipx` would install with it. Dependencies come from the release's static
+metadata (`Requires-Dist`), never from installing or building the package. A
+dependency with no exact version pin is counted in the summary: the newest
+match was checked, and a later release is what the next start installs.
+Servers with no version pinned are counted too. npm and Docker servers are
+reported as not checked yet. Values from `env`, arguments and URLs are never
+printed.
 
 Rules are listed in
 [docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md).
@@ -167,6 +172,10 @@ steps:
     with:
       sarif_file: buckthorn.sarif
 ```
+
+The check reads the files pip would pick for your project's Python. It uses
+the repository's `.python-version`, or 3.12 when there is none; set
+`python-version` if your project installs with another one.
 
 All inputs, including `allowlist` and signed receipts, are in
 [action.yml](https://github.com/hedgerow-dev/buckthorn/blob/main/action.yml).
@@ -242,9 +251,16 @@ the version folder taken out (`*/setup.py` matches `pkg-2.0/setup.py`), and
 but stay in the JSON report with their reason. Coverage gaps (`BKT-SKIP-*`,
 `BKT-LOCK-002`) cannot be allowed: they mean something was not read.
 
+For an npm tarball, `package` is the name in the file name. The registry
+names `@scope/pkg` as `pkg-1.0.0.tgz`, so an entry for `pkg` also covers
+another scope's `pkg`. Pin `version` to keep it narrow.
+
 ## Output formats
 
 `--format text` (default), `json`, or `sarif` for GitHub code scanning.
+
+The JSON report carries a `schema_version`. It goes up when a key changes
+meaning or is removed. New keys can appear in any release.
 
 ## Scan receipts
 

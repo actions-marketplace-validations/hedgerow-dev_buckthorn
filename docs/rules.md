@@ -13,13 +13,14 @@ read, and make the verdict `not_verified`, never `clean`.
 
 | Rule | Meaning |
 |---|---|
-| BKT-SKIP-001 | The archive would not open, or the file name is not a wheel or sdist, or a tar holds an npm `package.json` but npm and pip would read it differently, so it is read both ways (see npm). |
+| BKT-SKIP-001 | The archive would not open, or the file name is not a wheel or sdist, or a tar holds an npm `package.json` but npm and pip would read it differently, so it is read both ways (see npm), or an sdist member's name holds a backslash (a folder separator on Windows only, so where it unpacks depends on the system), or two sdist members unpack to the same file, or an sdist's `setup.py`, `setup.cfg` or `pyproject.toml` is named in another case (`Setup.py`) or ends in a dot or space, which macOS or Windows read as the real one. |
 | BKT-SKIP-002 | An archive limit was hit (member count, member size, total size). What was read is still checked. |
 | BKT-SKIP-003 | A metadata or Python file could not be parsed, or was too large to parse, or a package's modules call each other too much to follow every call (see Code that runs at import). In an npm tarball, also: JavaScript that runs on its own and cannot be read (see npm). |
 | BKT-SKIP-004 | A link inside an archive or an environment. Links are never followed. |
-| BKT-SKIP-005 | An installed distribution has no RECORD, so its files are unknown. |
+| BKT-SKIP-005 | An installed distribution has no RECORD, or one that cannot be read, so its files are unknown. |
 | BKT-LOCK-002 | A pinned artifact could not be checked (see Lockfiles below). |
 | BKT-MCP-001 | What an MCP server runs could not be checked (see MCP configs below). |
+| BKT-MCP-005 | The packages an MCP server would install with its own package could not be checked (see MCP configs below). |
 | BKT-SKIP-006 | A model repo's config or remote code was not read: not in the repo at that commit, not fetched (a gated repo, a network error), over a limit, not matching the blob id the Hub lists, outside the repo, a class bound some way other than a class statement, or code in another repo during a local scan. See Hugging Face remote code. |
 
 ## Code that runs at install
@@ -115,6 +116,7 @@ stripped only when every file sits in it.
 | BKT-INSTALL-006 | info | Reads the whole environment (`dict(os.environ)`, iterating it). Not raised inside an `env=` argument. |
 | BKT-INSTALL-007 | info | The build backend is shipped in the sdist (`backend-path`). Its code is read and reported under the rules above. |
 | BKT-INSTALL-008 | critical | Reads credentials or the whole environment **and** uses the network. |
+| BKT-INSTALL-009 | info | Names the sdist's build requirements (`build-system.requires` in `pyproject.toml`, the first 10). pip installs them and runs them at install, and they are not read here: check them as you would any dependency. |
 
 An `exec(open('pkg/_version.py').read())` in `setup.py` is not reported as
 exec: the named file's top level is read as install-time code in its own
@@ -193,7 +195,11 @@ it by that name. A test file still counts when a module that runs imports it,
 directly, relatively, through other test files, by a dotted name anywhere in
 a string (importlib, `pkg.tests:x`) or by a word of a string with no spaces
 (a relative name or a path), or when an entry point names it or a module
-inside it (a `pytest11` plugin loads in every project). The functions a test
+inside it (a `pytest11` plugin loads in every project). No test file is
+quiet when the code that runs walks its package's modules (`pkgutil`), or
+both imports by a name it builds and lists a directory, in the same file or
+not: then it may load any of them. A built name with no listing is the lazy
+loader many big packages use, and does not count. The functions a test
 file calls in other modules count only when the test file does. A module too
 large to parse, or a member name with a backslash, leaves every finding as it
 is.
@@ -205,7 +211,7 @@ top-level name, that is not an identifier or is a keyword
 `node-gyp/__init__.py` itself, a `.hidden` folder). Only importlib or a path can load it, so its findings are info
 until a module that runs (or an sdist's install code) names it, in the ways
 listed above, hyphens and all (`importlib.import_module("pkg.my-mod")`). A
-name built at run time is not followed, as for test files. pycasbin's sdist
+name built at run time counts as for test files. pycasbin's sdist
 names `node_modules` in `top_level.txt`, so pip installs it, but nothing
 imports it. A top-level name or a module's own file name that cannot be
 imported still counts: it is how the distribution names its own code, and
@@ -357,7 +363,7 @@ no code: meson's test cases (vendored in numpy) ship empty
 | Rule | Severity | Meaning |
 |---|---|---|
 | BKT-REC-001 | high | A wheel file does not match its hash in `RECORD`. Every copy of a duplicated name is checked. |
-| BKT-REC-002 | medium | A wheel file has no sha256-or-stronger hash in `RECORD`, or there is no `RECORD`. |
+| BKT-REC-002 | medium | A wheel file has no sha256-or-stronger hash in `RECORD`, or there is no `RECORD`, or it cannot be read (a field too long for pip to read either). |
 | BKT-META-001 | medium | `METADATA` or `PKG-INFO` is missing or names another package or version than the file name, or a wheel does not have exactly one `.dist-info` folder. |
 
 ## Lockfiles
@@ -392,7 +398,8 @@ Each server's launch is read from its `command` and `args`:
   variable (`${workspaceFolder}/uvx`) can be a file the repository ships. `pkg==1.0` and `pkg@1.0`
   are pinned. Anything else runs whatever is newest when the agent starts, so
   the newest release the spec allows is checked (not yanked, no pre-release
-  unless only those match).
+  unless only those match). The packages that release depends on are checked
+  with it; see Dependencies below.
 - Wrappers are looked through: `cmd /c` and `sh -c` with a plain command and
   no shell syntax, and `env A=1`.
 - npm launchers (`npx`, `bunx`, `pnpm dlx` and the like) and containers
@@ -433,16 +440,30 @@ config is ever shown.
 | BKT-MCP-002 | info | The server package is not pinned to a version: what was checked is today's newest, and the next release runs at the next start without review. A takeover only has to publish one. Info because most configs leave the pin out, and flagging it would hide real findings; text output still counts them. |
 | BKT-MCP-003 | medium | Installed from a git repository with no commit pinned: any push to the branch changes what runs, with no release or hash in between. |
 | BKT-MCP-004 | high | A shell command downloads code and runs it (`curl ... \| sh`, `$(curl ...)`, `irm ... \| iex`): no pin, no hash, every start. |
-| BKT-MCP-005 | info | The packages the server depends on are installed with it and were not checked. |
+| BKT-MCP-005 | info (coverage) | The packages this one would install with it could not be checked: no static dependency metadata, dependencies computed at build time, a URL or path dependency, a marker that could not be evaluated, a requirement that could not be parsed, no set of versions that satisfies the constraints, or a dependency set past the limit (400 packages, or 5,000 resolution steps). |
 | BKT-MCP-006 | info | A remote server: nothing is installed or run on this machine for it. |
+| BKT-MCP-007 | info | A dependency is not pinned to one version (`==` or `===`, with no wildcard). The newest release that matches was checked; a later match is installed at the next start. Info, like BKT-MCP-002, so a normal tree does not hide other findings; text output counts them. |
 
-**Dependencies.** uvx and pipx install the server's dependencies too, and only
-the server package is checked. That is a note (BKT-MCP-005), not
-`not_verified`. Every Python server has dependencies, so `not_verified` would
-be on every result and stop meaning anything. It is also how `scan` and
-`check_release` already treat a single release. To cover the dependencies,
-write the server's requirements with hashes (`uv pip compile
---generate-hashes`) and run `buckthorn check` on that file.
+**Dependencies.** uvx and pipx install the server's dependencies, and so does
+this check. Nothing is installed, built or run to find them. The list is the
+static `requires_dist` PyPI publishes for that release (empty means none;
+missing means unknown). When PyPI publishes none, the `Requires-Dist` headers
+in the file are read after its sha256 is checked. A wheel that has none
+depends on nothing. An sdist that omits them, or marks them dynamic, is
+BKT-MCP-005: there is no static list, and nothing is built to find one.
+
+Versions are chosen the way uv and pip choose for this machine. The newest
+release the specifiers allow that installs here (not yanked, unless the
+requirement pins that version; no pre-release unless only those match;
+`Requires-Python` and the wheel tags included). Environment markers are
+evaluated for this machine. Only the extras the requirement names are
+included. A dependency pinned with `==` or `===` and no wildcard is checked
+at that version. Anything else is BKT-MCP-007. The server package itself
+stays BKT-MCP-002 when the config leaves the pin out: that is the config,
+not a line of someone else's metadata.
+
+`scan` and `check_release` still read one release. A lockfile already names
+every dependency; this walk is only for an MCP config, which does not.
 
 ## Upgrades
 
@@ -465,7 +486,7 @@ their first 64 KB is read.
 | Rule | Severity | Meaning |
 |---|---|---|
 | BKT-ENV-001 | info | A file or folder at the top of site-packages that no installed package's RECORD lists. Files are still read by the `.pth`, start-up and import rules, so a dropped `.pth` with an import line is flagged on its own. The `_virtualenv.pth` and `_virtualenv.py` pair a virtualenv seeds is expected while the `.pth` is exactly `import _virtualenv`; the `.py` is still read. |
-| BKT-ENV-002 | info | An editable install of a local project: your own code, not checked. |
+| BKT-ENV-002 | info | An editable install. The files the environment holds for it (.pth, finder) are read like any other; the project's own code outside the environment is not. |
 
 ## npm
 

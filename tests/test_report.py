@@ -161,3 +161,42 @@ def test_precommit_hook_files_pattern_matches_what_check_reads():
         assert re.search(pattern, name), name
     for name in ["Pipfile.lock", "requirements.in.bak", "notes.txt", "uv.lock.orig"]:
         assert not re.search(pattern, name), name
+
+
+def test_precommit_file_names_cannot_be_read_as_options(tmp_path, monkeypatch, capsys):
+    """A repo folder named --write-allowlist=x would otherwise turn x/uv.lock into an option."""
+    import re
+    from pathlib import Path
+
+    text = (Path(__file__).parent.parent / ".pre-commit-hooks.yaml").read_text()
+    entry = re.search(r"entry: (.+)", text)[1].split()
+    assert entry == ["buckthorn", "check", "--"]
+    monkeypatch.chdir(tmp_path)
+    assert main([*entry[1:], "--write-allowlist=x/uv.lock"]) == 2
+    assert not (tmp_path / "x").exists()
+    assert "--write-allowlist=x/uv.lock" in capsys.readouterr().err
+
+
+def test_json_report_carries_a_schema_version(make_wheel, capsys):
+    main(["scan", "--format", "json", str(make_wheel({}))])
+    assert json.loads(capsys.readouterr().out)["schema_version"] == 1
+
+
+def _sarif_results(wheel, capsys):
+    main(["scan", "--format", "sarif", str(wheel)])
+    return json.loads(capsys.readouterr().out)["runs"][0]
+
+
+def test_sarif_results_have_stable_distinct_fingerprints(make_wheel, capsys):
+    wheel = make_wheel({"pkg.pth": SHADOW, "other.pth": SHADOW})
+    first = [r["partialFingerprints"] for r in _sarif_results(wheel, capsys)["results"]]
+    again = [r["partialFingerprints"] for r in _sarif_results(wheel, capsys)["results"]]
+    assert len(first) == 2 and first[0] != first[1] and first == again
+
+
+def test_sarif_names_the_line_and_keeps_rule_text_generic(make_wheel, capsys):
+    run = _sarif_results(make_wheel({"pkg/__init__.py": "\nimport os\nos.system('id')\n"}), capsys)
+    assert any("pkg/__init__.py:3" in r["message"]["text"] for r in run["results"])
+    for rule in run["tool"]["driver"]["rules"]:
+        assert rule["shortDescription"]["text"] == rule["id"]
+        assert rule["helpUri"].endswith("docs/rules.md")

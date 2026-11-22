@@ -14,6 +14,8 @@ import glob
 import hashlib
 import io
 import json
+import os
+import posixpath
 import re
 import sys
 from datetime import UTC, datetime
@@ -55,8 +57,8 @@ def main(argv: list[str] | None = None) -> int:
     _add_report_arguments(scan)
     check = sub.add_parser(
         "check",
-        help="fetch every artifact a lockfile pins, or every PyPI package an MCP config "
-        "launches, from PyPI, check its hash, scan it",
+        help="fetch every artifact a lockfile pins, or the PyPI packages an MCP config "
+        "would install, from PyPI, check each hash, scan them",
     )
     check.add_argument(
         "lockfile",
@@ -130,7 +132,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"buckthorn: {exc}", file=sys.stderr)
             return 2
         try:
-            args.receipt.write_text(json.dumps(statement, indent=2), encoding="utf-8")
+            _write(args.receipt, json.dumps(statement, indent=2))
         except OSError as exc:
             print(f"buckthorn: could not write {args.receipt}: {exc}", file=sys.stderr)
             return 2
@@ -139,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
         accepted = _baseline(results)
         try:
             text = json.dumps({"allow": allow + accepted}, indent=2) + "\n"
-            args.write_allowlist.write_text(text, encoding="utf-8")
+            _write(args.write_allowlist, text)
         except OSError as exc:
             print(f"buckthorn: could not write {args.write_allowlist}: {exc}", file=sys.stderr)
             return 2
@@ -161,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
 def json_report(results: list[Result]) -> dict:
     """The --format json report; the MCP tools return the same."""
     return {
+        "schema_version": 1,  # raised when a key changes meaning or goes away
         "tool": "buckthorn",
         "version": version("buckthorn"),
         "verdict": _overall(results),
@@ -263,9 +266,11 @@ def _package_of(result: Result) -> tuple[str, str]:
 
 
 def _allow_file(finding: Finding, release: str) -> str:
-    """The finding's file with the version folder taken out, as allowlist globs match."""
-    first, sep, rest = finding.file_path.partition("/")
-    return first.replace(f"-{release}", "") + sep + rest if release else finding.file_path
+    """The finding's file with the version folder taken out, as allowlist globs match.
+    "." and ".." are resolved first: pkg/tests/../x.py installs as pkg/x.py."""
+    file = posixpath.normpath(finding.file_path)
+    first, sep, rest = file.partition("/")
+    return first.replace(f"-{release}", "") + sep + rest if release else file
 
 
 def _baseline(results: list[Result]) -> list[dict[str, str]]:
@@ -307,7 +312,7 @@ def _apply_allowlist(results: list[Result], entries: list[dict[str, str]]) -> No
                     for e in entries
                     if e["rule"] == finding.rule_id
                     and package
-                    and _normalise(e["package"]) == _normalise(package)
+                    and _same_package(e["package"], package, result.path)
                     and e.get("version", release) == release
                     and fnmatch.fnmatchcase(file, e.get("file", "*"))
                     # code fetched from another repo's main branch is never allowed
@@ -322,8 +327,11 @@ def _apply_allowlist(results: list[Result], entries: list[dict[str, str]]) -> No
         result.findings = kept
 
 
-def _normalise(name: str) -> str:
-    return re.sub(r"[-_.]+", "-", name).lower()
+def _same_package(entry: str, package: str, path: str) -> bool:
+    """PyPI folds -_. and case together; npm names are taken as written."""
+    if path.lower().endswith(".tgz"):
+        return entry == package
+    return re.sub(r"[-_.]+", "-", entry).lower() == re.sub(r"[-_.]+", "-", package).lower()
 
 
 def _env(path: Path) -> list[Result]:
@@ -469,7 +477,7 @@ def _report(results: list[Result], args: argparse.Namespace, to_file: bool = Fal
         with contextlib.redirect_stdout(report):
             code = _report(results, args, to_file=True)
         try:
-            args.output.write_text(report.getvalue(), encoding="utf-8")
+            _write(args.output, report.getvalue())
         except OSError as exc:
             print(f"buckthorn: could not write {args.output}: {exc}", file=sys.stderr)
             return 2
@@ -488,9 +496,7 @@ def _report(results: list[Result], args: argparse.Namespace, to_file: bool = Fal
                 if f.severity == Severity.INFO and f.rule_id not in COVERAGE_RULE_IDS:
                     hidden += 1
                     continue
-                line = f.metadata.get("line") or (f.metadata.get("lines") or [None])[0]
-                where = f"{f.file_path}:{line}" if line else f.file_path
-                where, message = _printable(where), _printable(f.message)
+                where, message = _printable(_where(f)), _printable(f.message)
                 print(f"  {f.severity.value:<8} {f.rule_id:<16} {where}  {message}")
         counts = {
             v: sum(r.verdict == v for r in results) for v in ("clean", "flagged", "not_verified")
@@ -506,11 +512,16 @@ def _report(results: list[Result], args: argparse.Namespace, to_file: bool = Fal
             print(
                 f"{hidden} info note{'s' if hidden > 1 else ''} hidden (--format json shows them)"
             )
-        # Unpinned servers are info (most configs have them), so count them where they show.
+        # Unpinned servers and dependencies are info (most configs have them), so count
+        # them where they show. A normal tree would otherwise hide behind "info notes".
         unpinned = sum(f.rule_id == "BKT-MCP-002" for r in results for f in r.findings)
         if unpinned:
             s = "s" if unpinned > 1 else ""
             print(f"{unpinned} server{s} not pinned to a version (BKT-MCP-002)")
+        floating = sum(f.rule_id == "BKT-MCP-007" for r in results for f in r.findings)
+        if floating:
+            word = "dependency" if floating == 1 else "dependencies"
+            print(f"{floating} {word} not pinned to a version (BKT-MCP-007)")
         allowed = sum(len(r.allowed) for r in results)
         if allowed:
             print(f"{allowed} finding{'s' if allowed > 1 else ''} allowed by the allowlist")
@@ -527,13 +538,21 @@ _SARIF_LEVELS = {
 }
 
 
+_RULES_URL = "https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md"
+
+
+def _where(f: Finding) -> str:
+    line = f.metadata.get("line") or (f.metadata.get("lines") or [None])[0]
+    return f"{f.file_path}:{line}" if line else f.file_path
+
+
 def _sarif(results: list[Result], args: argparse.Namespace) -> dict:
     """SARIF 2.1.0 for code scanning. Info notes are left out; coverage gaps stay in.
 
     Findings sit inside archives, so each points at the artifact, or for `check`
     at its lockfile (the file in the repository), with the inner path in the message.
     """
-    rules: dict[str, str] = {}
+    rules: set[str] = set()
     sarif_results = []
     for r in results:
         uri = r.source or r.path
@@ -541,19 +560,27 @@ def _sarif(results: list[Result], args: argparse.Namespace) -> dict:
             gap = f.rule_id in COVERAGE_RULE_IDS
             if f.severity == Severity.INFO and not gap:
                 continue
-            rules.setdefault(f.rule_id, f.message)
+            rules.add(f.rule_id)
+            # Every finding in an artifact shares its location, so code scanning
+            # tells them apart by this, not by line.
+            key = "\0".join((f.rule_id, r.path, f.file_path, f.message))
             sarif_results.append(
                 {
                     "ruleId": f.rule_id,
                     "level": "warning" if gap else _SARIF_LEVELS[f.severity],
-                    "message": {"text": f"{r.path}: {f.file_path}: {f.message}"},
+                    "message": {"text": f"{r.path}: {_where(f)}: {f.message}"},
                     "locations": [{"physicalLocation": {"artifactLocation": {"uri": uri}}}],
+                    "partialFingerprints": {
+                        "buckthorn/v1": hashlib.sha256(key.encode()).hexdigest()
+                    },
                 }
             )
     driver = {
         "name": "buckthorn",
         "version": version("buckthorn"),
-        "rules": [{"id": i, "shortDescription": {"text": m}} for i, m in sorted(rules.items())],
+        "rules": [
+            {"id": i, "shortDescription": {"text": i}, "helpUri": _RULES_URL} for i in sorted(rules)
+        ],
     }
     return {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
@@ -564,8 +591,19 @@ def _sarif(results: list[Result], args: argparse.Namespace) -> dict:
 
 def _printable(text: str) -> str:
     """Control characters escaped: names come from the packages being checked, and a
-    carriage return or terminal escape in one could make a flagged line read clean."""
-    return re.sub(r"[\x00-\x1f\x7f-\x9f]", lambda m: repr(m.group())[1:-1], text)
+    carriage return or terminal escape in one could make a flagged line read clean, and a
+    direction mark (U+202E) can make one name read as another. A leading "::" is escaped
+    too: GitHub Actions reads such a line as a workflow command."""
+    controls = r"[\x00-\x1f\x7f-\x9f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]"
+    text = re.sub(controls, lambda m: repr(m.group())[1:-1], text)
+    return re.sub(r"^(\s*):", r"\1\\x3a", text) if text.lstrip().startswith("::") else text
+
+
+def _write(path: Path, text: str) -> None:
+    """Never through a symlink: the Action's default report path is in the checkout it checks."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    with open(os.open(path, flags, 0o666), "w", encoding="utf-8") as fh:
+        fh.write(text)
 
 
 def _ordered(findings: list[Finding]) -> list[Finding]:

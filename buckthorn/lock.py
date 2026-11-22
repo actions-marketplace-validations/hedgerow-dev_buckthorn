@@ -66,10 +66,12 @@ class Pin:
 def parse(path: Path) -> list[Pin]:
     """Pins from a requirements file, uv.lock or poetry.lock. ValueError for anything else."""
     text = path.read_text(encoding="utf-8")
-    if path.name == "uv.lock":
-        return _parse_uv(tomllib.loads(text))
-    if path.name == "poetry.lock":
-        return _parse_poetry(tomllib.loads(text))
+    if path.name in ("uv.lock", "poetry.lock"):
+        try:
+            data = tomllib.loads(text)
+        except RecursionError:
+            raise ValueError("TOML nested too deeply to parse") from None
+        return _parse_uv(data) if path.name == "uv.lock" else _parse_poetry(data)
     if path.suffix in (".txt", ".in") or path.name.startswith("requirements"):
         return _parse_requirements(text)
     raise ValueError(f"{path.name}: not a requirements file, uv.lock, poetry.lock or MCP config")

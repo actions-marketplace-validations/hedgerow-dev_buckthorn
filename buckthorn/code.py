@@ -131,7 +131,8 @@ FETCHING_COMMAND = re.compile(
 # A shell command that downloads code and runs it: curl ... | sh, $(curl ...), irm ... | iex.
 _DOWNLOAD = r"(?:curl|wget|iwr|irm|invoke-webrequest|invoke-restmethod)"
 PIPE_TO_SHELL = re.compile(
-    rf"\b{_DOWNLOAD}\b[^\n;&]*\|\s*(?:sudo\s+)?"
+    # Up to the next download word only, so each start is scanned once, not to the line end.
+    rf"\b{_DOWNLOAD}\b(?:(?!\b{_DOWNLOAD}\b)[^\n;&])*\|\s*(?:sudo\s+)?"
     r"(?:sh|bash|zsh|dash|ksh|python[0-9.]*|node|perl|ruby|iex|invoke-expression)\b"
     rf"|\$\(\s*{_DOWNLOAD}\b|<\(\s*{_DOWNLOAD}\b|`\s*{_DOWNLOAD}\b|\biex\s*\(\s*{_DOWNLOAD}\b",
     re.IGNORECASE,
@@ -547,6 +548,34 @@ def import_calls(
         return _imported_functions(tree, package, _called_functions(tree, entry, how)[1])
 
 
+ANY_MODULE = "*"  # in imported_modules' result: the file may import any module
+# Also in the result: the file imports by a name it computes, or lists a directory.
+# Together, in any files that run, they may import any module (see may_import_any).
+COMPUTED_IMPORT = "*computed"
+LISTS_DIRECTORY = "*lists"
+# Calls that import or run a module by name or path, and calls that list a package's modules.
+_LOADERS = frozenset(
+    {
+        "import_module",
+        "__import__",
+        "spec_from_file_location",
+        "run_path",
+        "run_module",
+        "load_source",
+        "load_module",
+        "SourceFileLoader",
+    }
+)
+_WALKERS = frozenset({"walk_packages", "iter_modules"})
+# Calls that list a directory: how a computed name can reach files no string names.
+_LISTINGS = frozenset({"listdir", "scandir", "iterdir", "glob", "iglob", "rglob", "walk"})
+
+
+def may_import_any(imported: set[str]) -> bool:
+    """Whether imported_modules results, joined, may import any module."""
+    return ANY_MODULE in imported or {COMPUTED_IMPORT, LISTS_DIRECTORY} <= imported
+
+
 def imported_modules(source: str | bytes, package: str) -> set[str]:
     """Dotted names a file may import: absolute and relative imports (resolved
     against package, the file's own package), each with its parents, and any
@@ -554,14 +583,49 @@ def imported_modules(source: str | bytes, package: str) -> set[str]:
     string with no spaces ('.helpers', 'tests/helpers.py') is added on its own as
     well, since a file can be loaded by a relative name or by path, and so are
     its names and words with hyphens ('pkg.my-mod', 'my-mod'), which importlib
-    loads though no import statement can. Raises SyntaxError like analyse.
+    loads though no import statement can. ANY_MODULE is in the set when the file
+    walks its package's modules. COMPUTED_IMPORT is in it when the file imports by
+    a name it computes, and LISTS_DIRECTORY when it lists a directory: the two
+    together, even from different files, may import any module. A computed name
+    with no listing is a lazy loader (`import_module(f"{__name__}.{name}")`),
+    common in big packages. Raises SyntaxError like analyse.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", SyntaxWarning)
         tree = ast.parse(source)
     names = set()
+    loaders = set(_LOADERS)  # with the names a `from importlib import x as y` binds
     with _deep_recursion():
-        for node in ast.walk(tree):
+        nodes = list(ast.walk(tree))
+        for node in nodes:
+            if isinstance(node, ast.ImportFrom):
+                loaders.update(a.asname for a in node.names if a.asname and a.name in _LOADERS)
+        # A loader called with only string constants loads what they name, and
+        # those strings are read below. Any other use of one (a computed name or
+        # path, `load = importlib.import_module`, getattr) may load anything.
+        constant_calls = {
+            id(node.func)
+            for node in nodes
+            if isinstance(node, ast.Call)
+            and not node.keywords
+            and all(isinstance(a, ast.Constant) and isinstance(a.value, str) for a in node.args)
+        }
+        for node in nodes:
+            if isinstance(node, ast.Attribute):
+                used = node.attr
+            elif isinstance(node, ast.Name):
+                used = node.id
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                used = node.value  # getattr(importlib, "import_module")
+            else:
+                used = ""
+            if used in _WALKERS:
+                names.add(ANY_MODULE)
+            if used in loaders and id(node) not in constant_calls:
+                names.add(COMPUTED_IMPORT)
+            if used in _LISTINGS:
+                names.add(LISTS_DIRECTORY)
+        for node in nodes:
             if isinstance(node, ast.Import):
                 names.update(alias.name for alias in node.names)
             elif isinstance(node, ast.ImportFrom):
@@ -1434,9 +1498,26 @@ class _Visitor(ast.NodeVisitor):
             self.generic_visit(node)
             self.via = outer
             return
+        # Decorators, defaults and annotations run when the def runs, which is at
+        # import for a module-level def: only the body waits for a call.
+        args = node.args
+        for part in (*args.defaults, *args.kw_defaults):
+            if part is not None:
+                self.visit(part)
+        if not isinstance(node, ast.Lambda):
+            for part in node.decorator_list:
+                self.visit(part)
+            every = (*args.posonlyargs, *args.args, args.vararg, *args.kwonlyargs, args.kwarg)
+            for arg in every:
+                if arg is not None and arg.annotation is not None:
+                    self.visit(arg.annotation)
+            if node.returns is not None:
+                self.visit(node.returns)
         self.function_depth += 1
         self.written.append([])
-        self.generic_visit(node)
+        body = node.body if isinstance(node.body, list) else [node.body]
+        for stmt in body:
+            self.visit(stmt)
         self.written.pop()
         self.function_depth -= 1
 

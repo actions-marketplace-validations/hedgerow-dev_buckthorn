@@ -3,7 +3,7 @@
 - id: buckthorn-check
   name: buckthorn check
   description: Fetch every artifact a changed lockfile pins, check its hash, and scan it
-  entry: buckthorn check
+  entry: buckthorn check --
   language: python
   pass_filenames: true
   files: '(^|/)(uv\.lock|poetry\.lock|requirements[^/]*\.txt)$'

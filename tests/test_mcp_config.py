@@ -19,9 +19,18 @@ class FakePyPI:
     def __init__(self):
         self.files: dict[str, bytes] = {}
         self.releases: dict[str, dict[str, list[dict]]] = {}
+        self.meta: dict[str, dict[str, list[str]]] = {}
         self.calls: list[str] = []
 
-    def add(self, name: str, version: str, data: bytes, yanked: bool = False) -> None:
+    def add(
+        self,
+        name: str,
+        version: str,
+        data: bytes,
+        yanked: bool = False,
+        requires: list[str] | None = None,
+        requires_python: str | None = None,
+    ) -> None:
         filename = f"{name}-{version}-py3-none-any.whl"
         url = f"{HOST}/{filename}"
         self.files[url] = data
@@ -30,8 +39,12 @@ class FakePyPI:
             "url": url,
             "digests": {"sha256": hashlib.sha256(data).hexdigest()},
             "yanked": yanked,
+            "requires_python": requires_python,
         }
         self.releases.setdefault(name, {}).setdefault(version, []).append(entry)
+        # None leaves requires_dist off the index, so the wheel's own metadata is read.
+        if requires is not None:
+            self.meta.setdefault(name, {})[version] = requires
 
     def __call__(self, url: str, max_bytes: int) -> bytes:
         self.calls.append(url)
@@ -40,7 +53,11 @@ class FakePyPI:
                 return json.dumps({"releases": releases}).encode()
             for version, entries in releases.items():
                 if url == f"https://pypi.org/pypi/{name}/{version}/json":
-                    return json.dumps({"urls": entries}).encode()
+                    body = {"urls": entries}
+                    requires = self.meta.get(name, {}).get(version)
+                    if requires is not None:
+                        body["info"] = {"requires_dist": requires}
+                    return json.dumps(body).encode()
         if url in self.files:
             return self.files[url]
         raise lock.FetchError(f"404 {url}")
@@ -51,11 +68,18 @@ def pypi(make_wheel, monkeypatch):
     """Every test here runs against the fake: none may reach the network."""
     fake = FakePyPI()
 
-    def add(name="pkg", version="1.0", members=None, yanked=False):
+    def add(
+        name="pkg",
+        version="1.0",
+        members=None,
+        yanked=False,
+        requires=None,
+        requires_python=None,
+    ):
         wheel = make_wheel(
             members or {f"{name}/__init__.py": "x = 1\n"}, f"{name}-{version}-py3-none-any.whl"
         )
-        fake.add(name, version, wheel.read_bytes(), yanked)
+        fake.add(name, version, wheel.read_bytes(), yanked, requires, requires_python)
 
     fake.publish = add
     monkeypatch.setattr(lock, "fetch_url", fake)
@@ -150,7 +174,7 @@ def test_pinned_pypi_launches_scan_that_release(pypi, command):
     (result,) = _check(_stdio(*command))
     assert result.path == "s/pkg-1.0-py3-none-any.whl"
     assert result.verdict == "clean"
-    assert _rules([result]) == {"BKT-MCP-005"}  # its dependencies were not checked
+    assert result.findings == []  # no dependencies, so nothing about them to say
 
 
 def test_unpinned_server_scans_the_newest_release_and_says_it_is_not_pinned(pypi):
@@ -413,3 +437,196 @@ def test_text_output_counts_unpinned_servers(pypi, tmp_path, capsys):
     config.write_text(json.dumps({"mcpServers": servers}))
     assert main(["check", str(config)]) == 0
     assert "1 server not pinned to a version (BKT-MCP-002)" in capsys.readouterr().out
+
+
+# The dependency set uvx or pipx would install
+
+
+def test_unpinned_dependency_is_resolved_scanned_and_flagged(pypi, tmp_path, capsys):
+    pypi.publish("pkg", "1.0", requires=["helper>=1", "leaf==1.0"])
+    pypi.publish("helper", "1.0")
+    pypi.publish("helper", "1.2", {"helper.pth": SHADOW})  # the newest match, and the one that runs
+    pypi.publish("helper", "9.0", yanked=True)
+    pypi.publish("helper", "2.0rc1")
+    pypi.publish("leaf", "1.0")
+    pypi.publish("leaf", "2.0")  # pinned out
+    results = _check(_stdio("uvx", "pkg==1.0"))
+    by_path = {r.path: r for r in results}
+    assert sorted(by_path) == [
+        "s/helper-1.2-py3-none-any.whl",
+        "s/leaf-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    helper, leaf, pkg = (by_path[path] for path in sorted(by_path))
+    assert "BKT-PTH-002" in _rules([helper])
+    assert helper.verdict == "flagged"
+    (floating,) = [f for f in helper.findings if f.rule_id == "BKT-MCP-007"]
+    assert floating.severity == "info"
+    assert floating.file_path == "s"
+    assert "helper>=1" in floating.message
+    assert "1.2 was checked" in floating.message
+    assert _rules([leaf]) == set()
+    assert _rules([pkg]) == set()
+    config = tmp_path / ".mcp.json"
+    config.write_text(json.dumps({"mcpServers": _stdio("uvx", "pkg==1.0")}))
+    assert main(["check", str(config)]) == 1
+    assert "1 dependency not pinned to a version (BKT-MCP-007)" in capsys.readouterr().out
+
+
+def test_pinned_config_scans_exact_dependencies_and_does_not_flag_them(pypi):
+    pypi.publish("pkg", "1.0", requires=["helper==1.0"])
+    pypi.publish("helper", "1.0", requires=["leaf==2.0"])
+    pypi.publish("helper", "2.0")
+    pypi.publish("leaf", "2.0")
+    pypi.publish("leaf", "3.0")
+    results = _check(_stdio("uvx", "pkg==1.0"))
+    assert sorted(r.path for r in results) == [
+        "s/helper-1.0-py3-none-any.whl",
+        "s/leaf-2.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    assert _rules(results) == set()
+    assert {r.verdict for r in results} == {"clean"}
+
+
+def test_two_servers_keep_separate_dependency_sets(pypi, tmp_path, capsys):
+    pypi.publish("pkg", "1.0", requires=["left==1.0"])
+    pypi.publish("left", "1.0")
+    pypi.publish("other", "3.0", requires=["right>=1"])
+    pypi.publish("right", "1.0")
+    pypi.publish("right", "1.5", {"right.pth": SHADOW})
+    config = {
+        "a": {"command": "uvx", "args": ["pkg==1.0"]},
+        "b": {"command": "pipx", "args": ["run", "other==3.0"]},
+    }
+    results = _check(config)
+    by_path = {r.path: r for r in results}
+    assert sorted(by_path) == [
+        "a/left-1.0-py3-none-any.whl",
+        "a/pkg-1.0-py3-none-any.whl",
+        "b/other-3.0-py3-none-any.whl",
+        "b/right-1.5-py3-none-any.whl",
+    ]
+    assert _rules([by_path["a/left-1.0-py3-none-any.whl"]]) == set()
+    assert "BKT-MCP-007" in _rules([by_path["b/right-1.5-py3-none-any.whl"]])
+    assert by_path["b/right-1.5-py3-none-any.whl"].verdict == "flagged"
+    path = tmp_path / ".mcp.json"
+    path.write_text(json.dumps({"mcpServers": config}))
+    assert main(["check", str(path)]) == 1
+    text = capsys.readouterr().out
+    assert "1 dependency not pinned to a version (BKT-MCP-007)" in text
+    assert "a/left-1.0-py3-none-any.whl: clean" in text
+    assert "b/right-1.5-py3-none-any.whl: flagged" in text
+
+
+def test_dependencies_are_read_from_the_wheel_when_the_index_has_none(pypi):
+    metadata = "Name: pkg\nVersion: 1.0\nRequires-Dist: helper==1.0\n"
+    pypi.publish("pkg", "1.0", {"pkg-1.0.dist-info/METADATA": metadata})
+    pypi.publish("helper", "1.0")
+    results = _check(_stdio("uvx", "pkg==1.0"))
+    assert sorted(r.path for r in results) == [
+        "s/helper-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    assert _rules(results) == set()
+
+
+def test_a_marker_drops_a_dependency_this_machine_would_not_install(pypi):
+    pypi.publish(
+        "pkg",
+        "1.0",
+        requires=['winonly==1.0; sys_platform == "win32"', "helper==1.0"],
+    )
+    pypi.publish("helper", "1.0")
+    results = _check(_stdio("uvx", "pkg==1.0"))
+    assert sorted(r.path for r in results) == [
+        "s/helper-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    assert not any("winonly" in url for url in pypi.calls)
+
+
+def test_only_requested_extras_are_installed(pypi):
+    pypi.publish(
+        "pkg",
+        "1.0",
+        requires=["base==1.0", 'feature==1.0; extra == "cli"'],
+    )
+    pypi.publish("base", "1.0")
+    pypi.publish("feature", "1.0")
+    plain = _check(_stdio("uvx", "pkg==1.0"))
+    assert sorted(r.path for r in plain) == [
+        "s/base-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    extra = _check(_stdio("uvx", "pkg[cli]==1.0"))
+    assert sorted(r.path for r in extra) == [
+        "s/base-1.0-py3-none-any.whl",
+        "s/feature-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+
+
+def test_resolution_backtracks_past_a_newest_release_that_conflicts(pypi):
+    pypi.publish("pkg", "2.0", requires=["lib>=2"])
+    pypi.publish("pkg", "1.0", requires=["lib==1.0"])
+    pypi.publish("lib", "1.0")
+    results = _check(_stdio("uvx", "pkg>=1"))
+    assert sorted(r.path for r in results) == [
+        "s/lib-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    assert "BKT-MCP-002" in _rules(results)  # the config itself does not pin pkg
+    assert "BKT-MCP-007" not in _rules(results)
+
+
+def test_a_dependency_cycle_is_scanned_once(pypi):
+    pypi.publish("pkg", "1.0", requires=["helper==1.0"])
+    pypi.publish("helper", "1.0", requires=["pkg>=1"])
+    results = _check(_stdio("uvx", "pkg==1.0"))
+    assert sorted(r.path for r in results) == [
+        "s/helper-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    assert _rules(results) == set()
+
+
+def test_dynamic_dependency_metadata_is_not_verified(pypi):
+    metadata = "Name: pkg\nVersion: 1.0\nDynamic: Requires-Dist\n"
+    pypi.publish("pkg", "1.0", {"pkg-1.0.dist-info/METADATA": metadata})
+    (result,) = _check(_stdio("uvx", "pkg==1.0"))
+    assert result.verdict == "not_verified"
+    assert "BKT-MCP-005" in _rules([result])
+    assert any("build time" in f.message for f in result.findings)
+
+
+def test_a_url_dependency_is_not_fetched(pypi):
+    pypi.publish("pkg", "1.0", requires=["evil @ https://example.com/evil.whl"])
+    (result,) = _check(_stdio("uvx", "pkg==1.0"))
+    assert result.verdict == "not_verified"
+    assert "BKT-MCP-005" in _rules([result])
+    assert not any("example.com" in url for url in pypi.calls)
+
+
+def test_requires_python_skips_a_release_this_interpreter_cannot_install(pypi):
+    pypi.publish("pkg", "1.0", requires=["helper>=1"])
+    pypi.publish("helper", "1.0")
+    pypi.publish("helper", "2.0", requires_python=">=9")
+    results = _check(_stdio("uvx", "pkg==1.0"))
+    assert sorted(r.path for r in results) == [
+        "s/helper-1.0-py3-none-any.whl",
+        "s/pkg-1.0-py3-none-any.whl",
+    ]
+    assert "BKT-MCP-007" in _rules(results)
+
+
+def test_mcp_server_names_cannot_forge_workflow_commands(pypi, tmp_path, capsys):
+    pypi.publish("pkg", "1.0")
+    config = tmp_path / ".mcp.json"
+    forged = "  ::error title=Buckthorn::all dependencies clean"
+    server = {"command": "uvx", "args": ["pkg==1.0"]}
+    config.write_text(json.dumps({"mcpServers": {forged: server}}))
+    main(["check", str(config)])
+    captured = capsys.readouterr()
+    lines = (captured.out + captured.err).splitlines()
+    assert lines and not any(line.lstrip().startswith("::") for line in lines)

@@ -81,7 +81,7 @@ Evaluation corpora:
 - **Benign:** the top 1,000 from `npm-high-impact` (MIT list, v1.13.0) [18], fetched from `registry.npmjs.org` with integrity checked. It includes the hard benign cases (esbuild, sharp and other packages with install scripts).
 - **Comparison:** GuardDog on the same files, as in `eval/guarddog/`.
 
-Running them safely (Mac mini only, never the laptop):
+Running them safely (an isolated container host only, never a workstation):
 
 - Fetch step: a container that can reach only GitHub or `registry.npmjs.org`, writing into a podman volume. Nothing is unpacked there.
 - Scan step: reuse `eval/datadog-malicious/scripts/Containerfile`: `--network none --read-only --cap-drop all --security-opt no-new-privileges`, non-root, corpus volume read-only, zips opened to tmpfs inside.
@@ -91,13 +91,13 @@ Running them safely (Mac mini only, never the laptop):
 
 Phase 0, decide:
 
-1. Kenneth approves this plan and the `BKT-NPM-` namespace -> verify: SPEC open question 3 marked decided, prefix listed in `docs/rules.md`.
+1. The maintainer approves this plan and the `BKT-NPM-` namespace -> verify: SPEC open question 3 marked decided, prefix listed in `docs/rules.md`.
 
 Phase 1, `package.json` only (no JS reading):
 
 2. Detect npm tarballs in `scan` -> verify: hand-made `.tgz` fixtures classify as npm, sdist fixtures unchanged, full test suite green.
 3. SCRIPT-001, BIN-001, META-001, INSTALL-001 on script commands -> verify: one firing and one benign fixture per rule.
-4. Dry run on 200 DataDog npm samples on the mini -> verify: a short note of what package.json alone catches and misses, no published numbers.
+4. Dry run on 200 DataDog npm samples on the container host -> verify: a short note of what package.json alone catches and misses, no published numbers.
 
 Phase 2, tokenizer:
 

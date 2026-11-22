@@ -37,7 +37,7 @@ _BUILD_TOOLS = frozenset(
 )
 _BUILD_COMMAND = re.compile(
     r"(?:node-gyp rebuild|node-gyp-build(?:-optional-packages)?|prebuild-install)"
-    r"(?: --?[\w.=-]+(?: \w+)?)*"
+    r"(?: -[\w.=-]+(?: \w+)?)*"  # one way to split each option, so no exponential backtracking
 )
 # Tools that build a binding.gyp when they run (prebuild-install and node-pre-gyp
 # fall back to it).

@@ -159,6 +159,17 @@ def test_text_output_escapes_control_characters(make_wheel, capsys):
     assert "\\r" in out
 
 
+@pytest.mark.parametrize("char", ["\u202e", "\u2066", "\u200f", "\u061c", "\u2028"])
+def test_text_output_escapes_direction_and_line_controls(make_wheel, capsys, char):
+    """U+202E shows "evil.pth" as "evil" plus "htp." reversed, so a name can read as another."""
+    from buckthorn.cli import main
+
+    main(["scan", str(make_wheel({f"evil{char}.pth": "import sys; sys.modules['x'] = 1\n"}))])
+    out = capsys.readouterr().out
+    assert char not in out
+    assert repr(char)[1:-1] in out
+
+
 def test_cache_write_does_not_follow_a_planted_link(tmp_path, make_wheel):
     import hashlib
 

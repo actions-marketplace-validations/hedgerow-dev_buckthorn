@@ -1,11 +1,16 @@
-"""Check an agent's MCP config: every server it launches, and the PyPI package behind it.
+"""Check an agent's MCP config: every server it launches, and the PyPI packages behind it.
 
 Reads the `mcpServers` table of Claude Code (`.mcp.json`, `~/.claude.json` and its
 per-project tables), Claude Desktop, Cursor and Windsurf, and the `servers` table
 of VS Code's `mcp.json` (comments and trailing commas allowed). Each server's
 launch is classified; a `uvx`, `uv tool run`, `uv run --with` or `pipx run`
-launch has its package fetched from PyPI, hash-checked and scanned by
-`lock.scan_release`, exactly as `buckthorn check` does for a lockfile pin.
+launch has its package, and every package that launcher would install with it,
+fetched from PyPI, hash-checked and scanned by `lock.scan_release`, exactly as
+`buckthorn check` does for a lockfile pin.
+
+The dependency set is resolved from static metadata only: the `requires_dist`
+PyPI publishes for a release, or the `Requires-Dist` headers in the wheel or
+sdist when it does not. Nothing is installed, built, imported or executed.
 
 Configs hold credentials in `env`, in arguments and in URLs. Nothing from a
 server entry is ever put in a finding except its config key and a package name
@@ -17,17 +22,24 @@ from __future__ import annotations
 import json
 import re
 import shlex
+import sys
+import tempfile
 import urllib.parse
 from collections.abc import Callable
+from dataclasses import dataclass
+from email.parser import HeaderParser
 from pathlib import Path
 
+from packaging.markers import UndefinedComparison, UndefinedEnvironmentName, default_environment
 from packaging.requirements import InvalidRequirement, Requirement
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.utils import canonicalize_name
 from packaging.version import InvalidVersion, Version
 
 from buckthorn import lock
 from buckthorn.code import PIPE_TO_SHELL
 from buckthorn.findings import Finding, Result, Severity
+from buckthorn.scan import ARTIFACT_SUFFIXES, read_archive
 
 # Launcher options that take a value (uvx, uv run, uv tool run, pipx run). An option
 # in neither set stops the check: guessing could take its value for the package.
@@ -117,14 +129,31 @@ def check(
     progress: Callable[[str], None] | None = None,
 ) -> list[Result]:
     """One Result per package a server installs from PyPI (named key/file), and one
-    named by the key for whatever else there is to say about the server."""
-    fetch = fetch or lock.fetch_url
+    named by the key for whatever else there is to say about the server.
+
+    For each uv, uvx or pipx launch, that is the server package and the full set
+    those tools would install with it.
+    """
+    fetch = _remembering(fetch or lock.fetch_url)
+    if cache_dir is not None:
+        return _check_cached(entries, fetch, cache_dir, progress)
+    with tempfile.TemporaryDirectory(prefix="buckthorn-") as tmp:
+        return _check_cached(entries, fetch, Path(tmp), progress)
+
+
+def _check_cached(
+    entries: Entries,
+    fetch: lock.Fetch,
+    cache: Path,
+    progress: Callable[[str], None] | None,
+) -> list[Result]:
     results = []
     for key, entry in entries:
         if progress:
             progress(key)
         requirements, findings = _server(key, entry)
-        results.extend(_scan(key, req, fetch, cache_dir) for req in requirements)
+        if requirements:
+            results.extend(_install_set(key, requirements, fetch, cache))
         if findings:
             results.append(Result(key, "", findings))
     return results
@@ -338,7 +367,111 @@ def _requirements(key: str, specs: list[str]) -> tuple[list[Requirement], list[F
     return requirements, findings
 
 
-def _scan(key: str, requirement: Requirement, fetch: lock.Fetch, cache_dir: Path | None) -> Result:
+# How many packages, and how many versions, one server's install set may try.
+# Past this the closure is not checked: a real tool environment is far smaller,
+# and an index that branches forever must not hang the check.
+_MAX_PACKAGES = 400
+_MAX_STEPS = 5000
+_UNKNOWN = object()
+_UNREADABLE = ("BKT-LOCK-001", "BKT-LOCK-002", "BKT-MCP-001")
+
+
+def _install_set(
+    key: str, requirements: list[Requirement], fetch: lock.Fetch, cache: Path
+) -> list[Result]:
+    """Scan the packages uvx or pipx would install for these requirements."""
+    resolver = _Resolver(fetch, cache)
+    try:
+        solution = resolver.resolve(requirements)
+    except _Unresolvable as exc:
+        return [_scan(key, req, fetch, cache, unresolved=exc.reason) for req in requirements]
+    except lock.FetchError as exc:
+        return [_scan(key, req, fetch, cache, unresolved=str(exc)) for req in requirements]
+    results = []
+    for canon in solution.order:
+        version = solution.chosen[canon]
+        display = solution.names[canon]
+        result = _cached_scan(solution.scans, key, canon, display, version, fetch, cache)
+        # A package PyPI does not have is named by the server key, as other gaps are.
+        if not any(f.rule_id == "BKT-MCP-001" for f in result.findings):
+            result.path = f"{key}/{result.path}"
+        results.append(
+            _annotate(
+                key,
+                result,
+                display,
+                version,
+                solution.constraints[canon],
+                solution.roots.get(canon),
+                [gap.reason for gap in solution.gaps if gap.package == canon],
+            )
+        )
+    return results
+
+
+def _cached_scan(
+    scans: dict[tuple[str, str], Result],
+    key: str,
+    canon: str,
+    display: str,
+    version: str,
+    fetch: lock.Fetch,
+    cache: Path,
+) -> Result:
+    cached = scans.get((canon, version))
+    if cached is not None:
+        return Result(cached.path, cached.sha256, list(cached.findings))
+    try:
+        return lock.scan_release(display, version, fetch=fetch, cache_dir=cache)
+    except lock.FetchError as exc:
+        message = f"{display} could not be checked on PyPI: {exc}"
+        return Result(key, "", [_gap(key, message)])
+
+
+def _annotate(
+    key: str,
+    result: Result,
+    display: str,
+    version: str,
+    requirements: list[Requirement],
+    roots: list[Requirement] | None,
+    reasons: list[str],
+) -> Result:
+    """Pin and coverage notes for one resolved package. Info, except a gap."""
+    scanned = not any(f.rule_id in _UNREADABLE for f in result.findings)
+    if scanned and roots is not None and _exact_pin(_combined(roots)) is None:
+        message = (
+            f"{display} is not pinned to a version, so the agent runs whatever is newest "
+            f"each time it starts; {version} was checked"
+        )
+        result.findings.append(Finding("BKT-MCP-002", message, Severity.INFO, key))
+    if scanned and roots is None and _exact_pin(_combined(requirements)) is None:
+        shown = ", ".join(dict.fromkeys(_shown(req) for req in requirements))
+        message = (
+            f"{display} is not pinned to a version ({shown}), so the agent installs "
+            f"whatever is newest that matches each time it starts; {version} was checked"
+        )
+        result.findings.append(Finding("BKT-MCP-007", message, Severity.INFO, key))
+    unique = list(dict.fromkeys(reasons))
+    if unique:
+        detail = "; ".join(unique)
+        message = f"the packages {display} depends on were not checked: {detail}"
+        result.findings.append(Finding("BKT-MCP-005", message, Severity.INFO, key))
+    return result
+
+
+def _scan(
+    key: str,
+    requirement: Requirement,
+    fetch: lock.Fetch,
+    cache_dir: Path | None,
+    unresolved: str | None = None,
+) -> Result:
+    """Scan one requirement at the version its own spec selects, with no dependencies.
+
+    Used when the install set could not be resolved: the named package is still
+    checked, and the gap says why the rest was not.
+    """
     name = requirement.name
     specifiers = list(requirement.specifier)
     pinned = None
@@ -354,27 +487,27 @@ def _scan(key: str, requirement: Requirement, fetch: lock.Fetch, cache_dir: Path
     except lock.FetchError as exc:
         return Result(key, "", [_gap(key, f"{name} could not be checked on PyPI: {exc}")])
     result.path = f"{key}/{result.path}"
-    if not pinned:
+    if not pinned and not any(f.rule_id in _UNREADABLE for f in result.findings):
         message = (
             f"{name} is not pinned to a version, so the agent runs whatever is newest "
             f"each time it starts; {version} was checked"
         )
         result.findings.append(Finding("BKT-MCP-002", message, Severity.INFO, key))
-    message = f"the packages {name} depends on are installed with it and were not checked"
-    result.findings.append(Finding("BKT-MCP-005", message, Severity.INFO, key))
+    if unresolved and not any(f.rule_id == "BKT-MCP-001" for f in result.findings):
+        message = f"the packages {name} depends on were not checked: {unresolved}"
+        result.findings.append(Finding("BKT-MCP-005", message, Severity.INFO, key))
     return result
 
 
 def _newest(requirement: Requirement, fetch: lock.Fetch) -> str:
     """The newest release on PyPI the spec allows: not yanked, not a pre-release
     unless only pre-releases match, as uv and pip choose."""
-    name = urllib.parse.quote(requirement.name, safe="")
-    raw = fetch(f"https://pypi.org/pypi/{name}/json", lock.MAX_INDEX_BYTES)
+    raw = fetch(_index_url(requirement.name), lock.MAX_INDEX_BYTES)
     try:
         releases = json.loads(raw)["releases"]
         versions = {}
         for text, files in releases.items():
-            if any(not f.get("yanked") for f in files):
+            if isinstance(files, list) and _installable(files):
                 try:
                     versions[Version(text)] = text
                 except InvalidVersion:
@@ -385,6 +518,471 @@ def _newest(requirement: Requirement, fetch: lock.Fetch) -> str:
     if best is None:
         raise lock.FetchError("no release on PyPI matches")
     return versions[best]
+
+
+class _SkipVersion(Exception):
+    """This version is not on PyPI or has no file here; try an older candidate."""
+
+
+class _Unresolvable(Exception):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class _Gap:
+    package: str  # canonical name of the package whose dependencies are incomplete
+    version: str
+    reason: str
+
+
+@dataclass
+class _Solution:
+    order: list[str]
+    chosen: dict[str, str]
+    constraints: dict[str, list[Requirement]]
+    roots: dict[str, list[Requirement]]
+    names: dict[str, str]
+    gaps: list[_Gap]
+    scans: dict[tuple[str, str], Result]
+
+
+class _Resolver:
+    """Newest-first backtracking over static Requires-Dist.
+
+    The same choices uv and pip make for a tool install on this machine: the
+    newest file that installs here, markers evaluated for this interpreter,
+    extras only when the requirement asks for them. A version whose metadata
+    is not static is kept (it is what would be installed) and recorded as a
+    gap, rather than replaced with an older release that happens to say more.
+    """
+
+    def __init__(self, fetch: lock.Fetch, cache: Path) -> None:
+        self.fetch = fetch
+        self.cache = cache
+        self.projects: dict[str, dict] = {}
+        self.dep_cache: dict[tuple[str, str], tuple[list[str] | None, str | None]] = {}
+        self.scans: dict[tuple[str, str], Result] = {}
+        self.constraints: dict[str, list[Requirement]] = {}
+        self.order: list[str] = []
+        self.names: dict[str, str] = {}
+        self.chosen: dict[str, str] = {}
+        self.expanded: dict[tuple[str, str], frozenset[str]] = {}
+        self.gaps: list[_Gap] = []
+        self.roots: dict[str, list[Requirement]] = {}
+        self.stuck = ""
+        self.steps = 0
+
+    def resolve(self, roots: list[Requirement]) -> _Solution:
+        for requirement in roots:
+            canon = canonicalize_name(requirement.name)
+            self.roots.setdefault(canon, []).append(requirement)
+            self._note(requirement)
+        if not self._search():
+            who = self.stuck or "a dependency"
+            raise _Unresolvable(
+                f"no release of {who} satisfies the constraints, so the packages "
+                "that would be installed were not checked"
+            )
+        return _Solution(
+            order=list(self.order),
+            chosen=dict(self.chosen),
+            constraints={name: list(reqs) for name, reqs in self.constraints.items()},
+            roots={name: list(reqs) for name, reqs in self.roots.items()},
+            names=dict(self.names),
+            gaps=list(self.gaps),
+            scans=self.scans,
+        )
+
+    def _search(self) -> bool:
+        self.steps += 1
+        if self.steps > _MAX_STEPS or len(self.order) > _MAX_PACKAGES:
+            raise _Unresolvable(
+                "the dependency set is too large to resolve, so the packages "
+                "that would be installed were not checked"
+            )
+        canon = next((name for name in self.order if not self._done(name)), None)
+        if canon is None:
+            return True
+        if canon in self.chosen:
+            return self._reexpand(canon)
+        options = self._candidates(canon)
+        if not options:
+            self.stuck = self.names.get(canon, canon)
+            return False
+        readable = False
+        for version in options:
+            self.steps += 1
+            if self.steps > _MAX_STEPS:
+                raise _Unresolvable(
+                    "the dependency set is too large to resolve, so the packages "
+                    "that would be installed were not checked"
+                )
+            try:
+                requires, reason = self._dependency_strings(self.names[canon], version)
+            except _SkipVersion:
+                continue
+            readable = True
+            saved = self._save()
+            self.chosen[canon] = version
+            if self._expand(canon, version, requires, reason) and self._search():
+                return True
+            self._restore(saved)
+            # No static metadata: an older release is not what would be installed.
+            if requires is None:
+                break
+        if not readable:
+            self.stuck = self.names.get(canon, canon)
+        return False
+
+    def _reexpand(self, canon: str) -> bool:
+        """A later requirement asked for more extras of a package already chosen."""
+        version = self.chosen[canon]
+        saved = self._save()
+        try:
+            requires, reason = self._dependency_strings(self.names[canon], version)
+        except _SkipVersion:
+            self._restore(saved)
+            return False
+        if self._expand(canon, version, requires, reason) and self._done(canon) and self._search():
+            return True
+        self._restore(saved)
+        return False
+
+    def _done(self, canon: str) -> bool:
+        if canon not in self.chosen:
+            return False
+        return self.expanded.get((canon, self.chosen[canon])) == _extras(self.constraints[canon])
+
+    def _expand(
+        self, canon: str, version: str, requires: list[str] | None, reason: str | None
+    ) -> bool:
+        while True:
+            extras = _extras(self.constraints[canon])
+            if self.expanded.get((canon, version)) == extras:
+                return True
+            self.expanded[(canon, version)] = extras
+            if requires is None:
+                why = reason or "it publishes no static dependency metadata"
+                self.gaps.append(_Gap(canon, version, why))
+                return True
+            if not self._apply(canon, version, requires, extras):
+                return False
+
+    def _apply(self, canon: str, version: str, requires: list[str], extras: frozenset[str]) -> bool:
+        for text in requires:
+            text = text.strip()
+            if not text:
+                continue
+            try:
+                requirement = Requirement(text)
+            except InvalidRequirement:
+                why = "a dependency requirement could not be parsed"
+                self.gaps.append(_Gap(canon, version, why))
+                continue
+            applies = _marker_applies(requirement, extras)
+            if applies is None:
+                why = f"a marker on {requirement.name} could not be evaluated"
+                self.gaps.append(_Gap(canon, version, why))
+                continue
+            if not applies:
+                continue
+            if requirement.url:
+                why = f"{requirement.name} is a URL or a path, not a PyPI release"
+                self.gaps.append(_Gap(canon, version, why))
+                continue
+            self._note(requirement)
+            dep = canonicalize_name(requirement.name)
+            if dep in self.chosen and self.chosen[dep] not in self._candidates(dep):
+                return False
+        return True
+
+    def _note(self, requirement: Requirement) -> None:
+        canon = canonicalize_name(requirement.name)
+        self.names.setdefault(canon, requirement.name)
+        have = self.constraints.setdefault(canon, [])
+        if any(_same_requirement(earlier, requirement) for earlier in have):
+            return
+        have.append(requirement)
+        if canon not in self.order:
+            self.order.append(canon)
+
+    def _candidates(self, canon: str) -> list[str]:
+        """Versions the current constraints allow, newest first.
+
+        An exact `==` or `===` pin is that version even when it is yanked: uv
+        and pip still install a pin. Anything else skips yanked releases and
+        releases this machine cannot install.
+        """
+        spec = _combined(self.constraints[canon])
+        exact = _exact_pin(spec)
+        if exact is not None:
+            return [exact]
+        releases = self._releases(self.names[canon])
+        versions: dict[Version, str] = {}
+        for text, files in releases.items():
+            if not isinstance(text, str) or not isinstance(files, list) or not _installable(files):
+                continue
+            try:
+                versions[Version(text)] = text
+            except InvalidVersion:
+                continue
+        return [versions[item] for item in sorted(spec.filter(versions), reverse=True)]
+
+    def _releases(self, name: str) -> dict:
+        canon = canonicalize_name(name)
+        if canon not in self.projects:
+            raw = self.fetch(_index_url(name), lock.MAX_INDEX_BYTES)
+            try:
+                releases = json.loads(raw)["releases"]
+            except (ValueError, KeyError, TypeError) as exc:
+                raise lock.FetchError(f"unexpected index response: {exc}") from exc
+            if not isinstance(releases, dict):
+                raise lock.FetchError("unexpected index response")
+            self.projects[canon] = releases
+        return self.projects[canon]
+
+    def _dependency_strings(self, name: str, version: str) -> tuple[list[str] | None, str | None]:
+        """(Requires-Dist, None) or (None, why it is not known). _SkipVersion when
+        this version itself cannot be used."""
+        canon = canonicalize_name(name)
+        key = (canon, version)
+        if key in self.dep_cache:
+            return self.dep_cache[key]
+        try:
+            document = self._version_document(name, version)
+        except lock.FetchError as exc:
+            raise _SkipVersion(str(exc)) from exc
+        found = _requires_from_index(document)
+        reason = None
+        if found is _UNKNOWN:
+            found, reason = self._requires_from_artifact(name, version)
+        self.dep_cache[key] = (found, reason)
+        return found, reason
+
+    def _version_document(self, name: str, version: str) -> dict:
+        raw = self.fetch(_index_url(name, version), lock.MAX_INDEX_BYTES)
+        try:
+            document = json.loads(raw)
+        except ValueError as exc:
+            raise lock.FetchError(f"unexpected index response: {exc}") from exc
+        if not isinstance(document, dict):
+            raise lock.FetchError("unexpected index response")
+        return document
+
+    def _requires_from_artifact(
+        self, name: str, version: str
+    ) -> tuple[list[str] | None, str | None]:
+        try:
+            result = lock.scan_release(name, version, fetch=self.fetch, cache_dir=self.cache)
+        except lock.FetchError as exc:
+            raise _SkipVersion(str(exc)) from exc
+        self.scans[(canonicalize_name(name), version)] = result
+        if any(f.rule_id in _UNREADABLE for f in result.findings) or not result.sha256:
+            return None, "its files could not be read"
+        path = self.cache / result.sha256 / result.path
+        if not path.is_file():
+            return None, "its files could not be read"
+        return _read_static_requires(path)
+
+    def _save(self) -> tuple:
+        return (
+            {name: list(reqs) for name, reqs in self.constraints.items()},
+            list(self.order),
+            list(self.gaps),
+            dict(self.expanded),
+            dict(self.chosen),
+        )
+
+    def _restore(self, saved: tuple) -> None:
+        constraints, order, gaps, expanded, chosen = saved
+        self.constraints = constraints
+        self.order = order
+        self.gaps = gaps
+        self.expanded = expanded
+        self.chosen = chosen
+
+
+def _remembering(fetch: lock.Fetch) -> lock.Fetch:
+    """Reuse PyPI's JSON responses within one check. Artifact bytes stay on the
+    file cache: holding every wheel in memory as well would double the read."""
+    seen: dict[tuple[str, int], bytes] = {}
+
+    def wrapped(url: str, max_bytes: int) -> bytes:
+        if urllib.parse.urlparse(url).hostname != "pypi.org":
+            return fetch(url, max_bytes)
+        key = (url, max_bytes)
+        if key not in seen:
+            seen[key] = fetch(url, max_bytes)
+        return seen[key]
+
+    return wrapped
+
+
+def _index_url(name: str, version: str | None = None) -> str:
+    base = "https://pypi.org/pypi/" + urllib.parse.quote(name, safe="")
+    if version is None:
+        return base + "/json"
+    return base + "/" + urllib.parse.quote(version, safe="") + "/json"
+
+
+def _installable(files: list) -> bool:
+    """True when some non-yanked file of this release installs on this machine.
+
+    Same checks as `scan_release`, so the version chosen here is one it can read.
+    """
+    usable = []
+    for entry in files:
+        if not isinstance(entry, dict) or entry.get("yanked"):
+            continue
+        if not _python_allows(entry.get("requires_python")):
+            continue
+        filename = str(entry.get("filename") or "")
+        digests = entry.get("digests") if isinstance(entry.get("digests"), dict) else {}
+        sha = str(digests.get("sha256") or "").lower()
+        url = str(entry.get("url") or "")
+        if not (
+            lock._SHA256.match(sha)
+            and lock._SAFE_FILENAME.match(filename)
+            and filename.lower().endswith(ARTIFACT_SUFFIXES)
+            and lock.allowed_url(url)
+        ):
+            continue
+        usable.append((filename, sha, url))
+    return bool(lock._installable_here(usable))
+
+
+def _python_allows(requires: object) -> bool:
+    if not isinstance(requires, str) or not requires.strip():
+        return True
+    try:
+        spec = SpecifierSet(requires)
+    except InvalidSpecifier:
+        return True
+    version = Version(f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+    return spec.contains(version, prereleases=True)
+
+
+def _requires_from_index(document: dict) -> list[str] | object:
+    """Requires-Dist from the version's JSON, or _UNKNOWN when PyPI has none.
+
+    `null` means the release did not publish static metadata. An empty list
+    means it published some and depends on nothing.
+    """
+    info = document.get("info")
+    if not isinstance(info, dict) or "requires_dist" not in info:
+        return _UNKNOWN
+    raw = info["requires_dist"]
+    if raw is None:
+        return _UNKNOWN
+    if not isinstance(raw, list) or not all(isinstance(item, str) for item in raw):
+        raise lock.FetchError("unexpected index response")
+    return raw
+
+
+def _read_static_requires(path: Path) -> tuple[list[str] | None, str | None]:
+    """Requires-Dist from a hash-checked wheel or sdist, without building it.
+
+    A wheel with no Requires-Dist depends on nothing: wheel metadata is static.
+    An sdist that omits it, or marks it dynamic, is not known from here.
+    """
+    members, _findings = read_archive(path)
+    wheel = path.name.lower().endswith(".whl")
+    if wheel:
+        found = [
+            data
+            for name, data in members
+            if name.count("/") == 1 and name.endswith(".dist-info/METADATA")
+        ]
+    else:
+        found = [
+            data
+            for name, data in members
+            if name.count("/") == 1 and name.endswith("/PKG-INFO")
+        ]
+    if len(found) != 1:
+        if wheel:
+            return None, "the wheel has no metadata"
+        return None, "the sdist publishes no static dependency metadata"
+    return _requires_from_metadata(found[0].decode("utf-8", errors="replace"), wheel=wheel)
+
+
+def _requires_from_metadata(text: str, *, wheel: bool) -> tuple[list[str] | None, str | None]:
+    headers = HeaderParser().parsestr(text)
+    dynamic: set[str] = set()
+    for raw in headers.get_all("Dynamic") or []:
+        dynamic.update(part.strip().lower().replace("_", "-") for part in raw.split(","))
+    if "requires-dist" in dynamic:
+        return None, "its dependencies are computed at build time"
+    fields = headers.get_all("Requires-Dist")
+    if not fields:
+        if wheel:
+            return [], None
+        return None, "the sdist publishes no static dependency metadata"
+    return [field.strip() for field in fields if field.strip()], None
+
+
+def _combined(requirements: list[Requirement]) -> SpecifierSet:
+    spec = SpecifierSet()
+    for requirement in requirements:
+        spec &= requirement.specifier
+    return spec
+
+
+def _exact_pin(spec: SpecifierSet) -> str | None:
+    """The one version an `==` or `===` specifier without a wildcard demands."""
+    found: str | None = None
+    for item in spec:
+        if item.operator not in ("==", "===") or "*" in item.version:
+            continue
+        if found is not None and found != item.version:
+            return None
+        found = item.version
+    if found is None:
+        return None
+    try:
+        if Version(found) not in spec:
+            return None
+    except InvalidVersion:
+        return found
+    return found
+
+
+def _extras(requirements: list[Requirement]) -> frozenset[str]:
+    return frozenset(extra for requirement in requirements for extra in requirement.extras)
+
+
+def _marker_applies(requirement: Requirement, extras: frozenset[str]) -> bool | None:
+    """Whether this dependency is installed for these extras on this machine.
+
+    None when the marker cannot be evaluated: the dependency is then a gap,
+    not silently dropped or assumed.
+    """
+    if requirement.marker is None:
+        return True
+    environment = default_environment()
+    try:
+        return any(
+            requirement.marker.evaluate({**environment, "extra": extra})
+            for extra in (frozenset({""}) | extras)
+        )
+    except (UndefinedComparison, UndefinedEnvironmentName, ValueError):
+        return None
+
+
+def _shown(requirement: Requirement) -> str:
+    spec = str(requirement.specifier)
+    return f"{requirement.name}{spec}" if spec else requirement.name
+
+
+def _same_requirement(left: Requirement, right: Requirement) -> bool:
+    return (
+        canonicalize_name(left.name) == canonicalize_name(right.name)
+        and str(left.specifier) == str(right.specifier)
+        and set(left.extras) == set(right.extras)
+        and str(left.marker) == str(right.marker)
+    )
 
 
 def _gap(key: str, message: str) -> Finding:

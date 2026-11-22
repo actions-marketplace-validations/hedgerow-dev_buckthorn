@@ -11,6 +11,34 @@ requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Hedgerow", email = "hello@hedgerow.dev" }]
+keywords = [
+    "security",
+    "supply-chain",
+    "static-analysis",
+    "malware",
+    "pypi",
+    "npm",
+    "mcp",
+    "lockfile",
+    "sarif",
+    "huggingface",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
 dependencies = ["packaging>=24"]  # wheel tag matching, as pip does it (Apache-2.0 OR BSD-2)
 
 [project.urls]

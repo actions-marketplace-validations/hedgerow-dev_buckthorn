@@ -1234,3 +1234,33 @@ def test_hostile_shapes_are_read_in_bounded_time(make_npm, fields, files):
     started = time.perf_counter()
     scan_artifact(make_npm(_with(**fields), files=files))
     assert time.perf_counter() - started < 5
+
+
+@pytest.mark.parametrize(
+    "filename, expected",
+    [
+        ("left-pad-1.3.0-beta.1.tgz", ("left-pad", "1.3.0-beta.1")),
+        ("left-pad-1.3.0.tgz", ("left-pad", "1.3.0")),
+        ("scope-pkg-2.0.0-rc.1+build.5.tgz", ("scope-pkg", "2.0.0-rc.1+build.5")),
+        # a package named lodash-4.17.21 is not lodash
+        ("lodash-4.17.21-1.0.0.tgz", ("lodash-4.17.21", "1.0.0")),
+    ],
+)
+def test_npm_tarball_names_split_at_the_semver(filename, expected):
+    from buckthorn.scan import split_artifact_name
+
+    assert split_artifact_name(filename) == expected
+
+
+def test_npm_allowlist_names_are_not_folded_like_pypi_names(make_npm, tmp_path):
+    from buckthorn.cli import main
+
+    manifest = {"name": "lodash.get", "version": "1.0.0", "scripts": {"install": "node x.js"}}
+    tarball = make_npm(manifest, name="lodash.get-1.0.0.tgz")
+    entry = {"rule": "BKT-NPM-SCRIPT-001", "package": "lodash-get", "reason": "r"}
+    allow = tmp_path / "allow.json"
+    allow.write_text(json.dumps({"allow": [entry]}))
+    assert main(["scan", "--allowlist", str(allow), str(tarball)]) == 1
+    entry["package"] = "lodash.get"
+    allow.write_text(json.dumps({"allow": [entry]}))
+    assert main(["scan", "--allowlist", str(allow), str(tarball)]) == 0

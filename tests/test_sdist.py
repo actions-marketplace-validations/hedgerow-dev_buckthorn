@@ -18,6 +18,29 @@ def test_plain_setup_py_is_clean(make_sdist):
 
 def test_pyproject_only_sdist_is_clean(make_sdist):
     toml = '[build-system]\nrequires = ["hatchling"]\nbuild-backend = "hatchling.build"\n'
+    findings = scan_sdist(make_sdist({"pyproject.toml": toml}))
+    assert verdict(findings) == "clean"
+    assert _rules(findings) == ["BKT-INSTALL-009"]
+
+
+def test_build_requirements_are_named_in_an_info_note(make_sdist):
+    """pip fetches and runs these at install, and they are not read here."""
+    toml = '[build-system]\nrequires = ["setuptools>=61", "evil-helper==6.6"]\n'
+    (note,) = scan_sdist(make_sdist({"pyproject.toml": toml}))
+    assert (note.rule_id, note.severity.value) == ("BKT-INSTALL-009", "info")
+    assert "setuptools>=61, evil-helper==6.6" in note.message
+
+
+def test_many_build_requirements_are_cut_short(make_sdist):
+    names = ", ".join(f'"p{i}"' for i in range(30))
+    toml = f"[build-system]\nrequires = [{names}]\n"
+    (note,) = scan_sdist(make_sdist({"pyproject.toml": toml}))
+    assert "p9" in note.message and "p10" not in note.message and "20 more" in note.message
+
+
+@pytest.mark.parametrize("requires", ["[]", '"setuptools"', "[1, 2]"])
+def test_no_note_without_a_list_of_names(make_sdist, requires):
+    toml = f"[build-system]\nrequires = {requires}\n"
     assert scan_sdist(make_sdist({"pyproject.toml": toml})) == []
 
 
@@ -728,7 +751,7 @@ def test_setup_py_under_setuptools_backend_keeps_the_reading(make_sdist, command
     toml = '[build-system]\nrequires = ["setuptools"]\nbuild-backend = "setuptools.build_meta"\n'
     source = HEAD + PUBLISH + f"setup(name='pkg', cmdclass={{'{command}': Publish}})\n"
     findings = scan_sdist(make_sdist({"setup.py": source, "pyproject.toml": toml}))
-    assert _install_rules(findings) == [("BKT-INSTALL-002", "info")]
+    assert _install_rules(findings) == [("BKT-INSTALL-002", "info"), ("BKT-INSTALL-009", "info")]
 
 
 @pytest.mark.parametrize(

@@ -39,6 +39,7 @@ from buckthorn.code import (
     import_calls,
     imported_functions,
     imported_modules,
+    may_import_any,
     not_run_by_pip,
     reaches_setup_py,
 )
@@ -153,15 +154,16 @@ def scan_wheel(path: Path) -> list[Finding]:
     members, findings = read_archive(path)
     if not findings:  # integrity needs every member; a cut-short read is already not_verified
         findings.extend(_check_integrity(path.name, members))
-    findings.extend(check_members(members, _is_pure_wheel(path.name)))
+    version = split_artifact_name(path.name)[1]
+    findings.extend(check_members(members, _is_pure_wheel(path.name), version))
     return findings
 
 
-def check_members(members: list[tuple[str, bytes]], pure: bool) -> list[Finding]:
+def check_members(members: list[tuple[str, bytes]], pure: bool, version: str = "") -> list[Finding]:
     """The per-file rules, for wheel members or files installed in site-packages.
 
     Names are wheel member names, which for installed files are their paths
-    relative to site-packages.
+    relative to site-packages. version, when known, is left out of line hashes.
     """
     names = {name for name, _ in members}
     modules, quiet = _modules_and_quiet_tests(members)
@@ -181,7 +183,8 @@ def check_members(members: list[tuple[str, bytes]], pure: bool) -> list[Finding]
             findings.append(Finding("BKT-START-001", message, Severity.HIGH, name))
         if installed.endswith(".py"):
             entry = called.get(name, {})
-            findings.extend(_code_findings("IMPORT", name, data, True, entry=entry)[0])
+            found = _code_findings("IMPORT", name, data, True, entry=entry, version=version)
+            findings.extend(found[0])
             if CALL_TIME:
                 findings.extend(_call_findings(name, data, entry, whole_file=name in quiet))
         elif installed.endswith(".pyc"):
@@ -270,6 +273,7 @@ def _quiet_files(
     """
     reached = set(reached)
     todo = [m for m in modules if m not in quiet] + list(reached)
+    seen: set[str] = set()  # every name the modules that run import, for may_import_any
     while todo:
         module = todo.pop()
         imported = set()
@@ -280,6 +284,9 @@ def _quiet_files(
                 imported |= imported_modules(data, _package_of(module, name))
             except (SyntaxError, ValueError, RecursionError, MemoryError):
                 return set()
+        seen |= imported
+        if may_import_any(seen):
+            return set()  # imports by a computed name, so it may run any of them
         found = _named(quiet - reached, imported)
         reached |= found
         todo.extend(found)
@@ -574,9 +581,14 @@ def _check_integrity(filename: str, members: list[tuple[str, bytes]]) -> list[Fi
         findings.append(Finding("BKT-REC-002", "wheel has no RECORD", Severity.MEDIUM, record_name))
         return findings
     record: dict[str, str] = {}
-    for row in csv.reader(files[record_name].decode("utf-8", errors="replace").splitlines()):
-        if len(row) >= 2:
-            record[row[0]] = row[1]
+    try:
+        for row in csv.reader(files[record_name].decode("utf-8", errors="replace").splitlines()):
+            if len(row) >= 2:
+                record[row[0]] = row[1]
+    except csv.Error as exc:  # a field past csv's limit: pip cannot read it either
+        message = f"RECORD could not be read: {exc}"
+        findings.append(Finding("BKT-REC-002", message, Severity.MEDIUM, record_name))
+        return findings
     unsigned = {record_name, f"{dist_info}/RECORD.jws", f"{dist_info}/RECORD.p7s"}
     for name, data in members:
         if name in unsigned:
@@ -635,7 +647,13 @@ def split_artifact_name(filename: str) -> tuple[str, str]:
     if filename.lower().endswith(".whl"):
         tags = filename[:-4].split("-")
         return (tags[0], tags[1]) if len(tags) >= 5 else ("", "")
-    dist, _, version = _sdist_stem(filename).rpartition("-")
+    stem = _sdist_stem(filename)
+    # An npm version can hold a dash (1.3.0-beta.1), so split before the last
+    # semver that fits: a package named lodash-4.17.21 is not lodash.
+    npm_split = re.fullmatch(r"(.+)-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)", stem)
+    if filename.lower().endswith(".tgz") and npm_split:
+        return npm_split[1], npm_split[2]
+    dist, _, version = stem.rpartition("-")
     return dist, version
 
 
@@ -644,6 +662,9 @@ def _sdist_stem(filename: str) -> str:
         if filename.lower().endswith(suffix):
             return filename[: -len(suffix)]
     return filename
+
+
+_BUILD_FILES = frozenset({"setup.py", "setup.cfg", "pyproject.toml"})
 
 
 def scan_sdist(
@@ -659,17 +680,40 @@ def scan_sdist(
     """
     members, findings = read if read is not None else read_archive(path)
     complete = not findings
-    # Names as an unpacker sees them: ./ and ../ resolved, and one top folder
-    # stripped only when every file sits in it (pip's rule). Last copy wins.
-    files = {posixpath.normpath(name): data for name, data in members}
+    # Names as an unpacker sees them: ./ and ../ resolved, a leading / dropped
+    # (tarfile's data filter, which pip uses), \ a folder separator as pip splits
+    # the top folder there, and one top folder stripped only when every file sits
+    # in it (pip's rule). Last copy wins.
+    files: dict[str, bytes] = {}
+    raw: dict[str, str] = {}
+    for name, data in members:
+        unpacked = posixpath.normpath(name.replace("\\", "/").lstrip("/"))
+        if "\\" in name:
+            # A folder separator on Windows, part of a file name elsewhere: where
+            # pip puts the file, and so which setup.py runs, depends on the system.
+            message = f"{name}: a backslash in a member name unpacks differently by system"
+            findings.append(Finding("BKT-SKIP-001", message, Severity.INFO, unpacked))
+        elif raw.setdefault(unpacked, name) != name:
+            message = f"{name} and {raw[unpacked]} unpack to the same file"
+            findings.append(Finding("BKT-SKIP-001", message, Severity.INFO, unpacked))
+        files[unpacked] = data
     tops = {name.split("/")[0] for name in files}
     top = tops.pop() if len(tops) == 1 and all("/" in name for name in files) else ""
 
     def at(relative: str) -> str:
         return posixpath.normpath(f"{top}/{relative}" if top else relative)
 
+    # On a case-insensitive disk (macOS, Windows) Setup.py is setup.py, and pip runs
+    # it. Windows also drops a trailing dot or space, and writes setup.py::$DATA
+    # as setup.py.
+    for name in files:
+        rest = name[len(top) + 1 :] if top else name
+        if rest.split(":")[0].rstrip(". ").lower() in _BUILD_FILES and rest not in _BUILD_FILES:
+            message = f"{rest} is a build file on macOS or Windows, and is not read as one"
+            findings.append(Finding("BKT-SKIP-001", message, Severity.INFO, name))
+
+    dist, version = split_artifact_name(path.name)
     if complete:
-        dist, version = split_artifact_name(path.name)
         findings.extend(_check_metadata(at("PKG-INFO"), files, dist, version))
     whole = [at("setup.py")] if at("setup.py") in files else []
     folders = {at(".")}
@@ -685,7 +729,12 @@ def scan_sdist(
     setup, setup_at, setup_found = at("setup.py"), len(findings), []
     for name, top_level_only in queue:  # grows as exec'd files are found
         found, exec_files = _code_findings(
-            "INSTALL", name, files[name], top_level_only, follow=lambda p: at(p) in files
+            "INSTALL",
+            name,
+            files[name],
+            top_level_only,
+            follow=lambda p: at(p) in files,
+            version=version,
         )
         if name == setup:  # placed once the other install code is known
             setup_found = found
@@ -746,6 +795,8 @@ def scan_sdist(
         except (SyntaxError, ValueError, RecursionError, MemoryError):
             unnamed = set()  # install code we cannot read may name any of them
             break
+    if may_import_any(install_names):
+        unnamed = set()  # install code that imports by a computed name may run any of them
     quiet = _quiet_files(modules, unnamed, _named(unnamed, install_names)) if unnamed else set()
     called, gaps = _calls_between(modules, quiet, seed=entry)
     findings.extend(gaps)
@@ -756,7 +807,8 @@ def scan_sdist(
         # A package module setup.py imports is read as install code, so the
         # functions other package modules call in it are read here too.
         how = called.get(name, {}) | entry.get(name, {})
-        findings.extend(_code_findings("INSTALL", name, files[name], True, entry=how)[0])
+        found = _code_findings("INSTALL", name, files[name], True, entry=how, version=version)
+        findings.extend(found[0])
         if CALL_TIME:
             findings.extend(_call_findings(name, files[name], how))
     read = set(whole) | beside | entry.keys()
@@ -766,12 +818,19 @@ def scan_sdist(
         config += [name for name in files if name.endswith(".egg-info/entry_points.txt")]
         if skipped := _not_run_by_pip(files, setup, config):
             setup_found = _code_findings(
-                "INSTALL", setup, files[setup], False, lambda p: at(p) in files, skipped=skipped
+                "INSTALL",
+                setup,
+                files[setup],
+                False,
+                lambda p: at(p) in files,
+                skipped=skipped,
+                version=version,
             )[0]
         findings[setup_at:setup_at] = setup_found
     for name in package_modules:
         if name not in read:
-            found = _code_findings("IMPORT", name, files[name], True, entry=called.get(name, {}))
+            how = called.get(name, {})
+            found = _code_findings("IMPORT", name, files[name], True, entry=how, version=version)
             _quieten(found[0], quiet)
             findings.extend(found[0])
             if CALL_TIME:
@@ -924,7 +983,7 @@ def _package_modules(
 def _check_build_backend(
     at: Callable[[str], str], files: dict[str, bytes]
 ) -> tuple[list[Finding], list[str], set[str]]:
-    """BKT-INSTALL-007 for a build backend shipped in the sdist.
+    """BKT-INSTALL-009 for build requirements, BKT-INSTALL-007 for a backend in the sdist.
 
     Also returns the backend's module files and the backend-path folders, for
     the caller to read as install-time code.
@@ -932,20 +991,30 @@ def _check_build_backend(
     name = at("pyproject.toml")
     try:
         data = tomllib.loads(files[name].decode("utf-8", errors="replace"))
-    except tomllib.TOMLDecodeError as exc:
+    except (tomllib.TOMLDecodeError, RecursionError) as exc:
         message = f"could not parse pyproject.toml: {exc}"
         return [Finding("BKT-SKIP-003", message, Severity.INFO, name)], [], set()
     build_system = data.get("build-system", {})
     if not isinstance(build_system, dict):
         message = "pyproject.toml build-system is not a table"
         return [Finding("BKT-SKIP-003", message, Severity.INFO, name)], [], set()
+    findings = []
+    # pip installs these and runs them at install. They are not read here, so
+    # name them: a gap would fail nearly every sdist.
+    requires = build_system.get("requires")
+    names = [r for r in requires if isinstance(r, str)] if isinstance(requires, list) else []
+    if names:
+        more = f", and {len(names) - 10} more" if len(names) > 10 else ""
+        listed = ", ".join(names[:10]) + more
+        message = f"build requirements run at install and are not read here: {listed}"
+        findings.append(Finding("BKT-INSTALL-009", message, Severity.INFO, name))
     backend_path = build_system.get("backend-path")
     if not isinstance(backend_path, list) or not backend_path:
-        return [], [], set()
+        return findings, [], set()
     # Info: common (pyyaml, pillow, setuptools). The backend's own code is read
     # by the caller, and what it does is what gets flagged.
     message = "build backend is shipped in the sdist (backend-path), so its code runs at install"
-    findings = [Finding("BKT-INSTALL-007", message, Severity.INFO, name)]
+    findings.append(Finding("BKT-INSTALL-007", message, Severity.INFO, name))
     module = str(build_system.get("build-backend", "")).split(":")[0].replace(".", "/")
     folders = {at(folder) for folder in backend_path if isinstance(folder, str)}
     modules = [
@@ -983,6 +1052,7 @@ def _code_findings(
     follow: Callable[[str], bool] = lambda path: False,
     entry: Mapping[str, str] = {},
     skipped: Sequence[tuple[int, int, str | None]] = (),
+    version: str = "",
 ) -> tuple[list[Finding], list[str]]:
     """One finding per kind of hit per file, with every line it was seen on.
 
@@ -1018,22 +1088,39 @@ def _code_findings(
         if not by_kind[kind]:
             del by_kind[kind]
     findings = []
+    text = source.decode("utf-8", "replace").splitlines()
+
+    def where(lines: list[int]) -> dict[str, list]:
+        # A hash of each line's text, so diff can tell one call from another of a
+        # kind. A hash, not the text: a line can hold a token, and reports never do.
+        code = [text[n - 1].strip() if 0 < n <= len(text) else "" for n in lines]
+        if "." in version:  # a line naming the package's own version is the same line
+            code = [c.replace(version, "") for c in code]
+        return {"lines": lines, "line_hashes": [_line_hash(c) for c in code]}
+
     for kind, kind_hits in by_kind.items():
         rule, severity = _CODE_RULES[kind]
         details = "; ".join(sorted({h.detail for h in kind_hits}))
         message = f"runs {_WHEN[when]}: {details}" if "{when}" in rule else details
         lines = [h.line for h in kind_hits]
-        findings.append(Finding(rule.format(when=when), message, severity, name, {"lines": lines}))
+        findings.append(Finding(rule.format(when=when), message, severity, name, where(lines)))
     if "network" in by_kind and ("secrets" in by_kind or "environ" in by_kind):
         message = f"reads credentials or the whole environment and uses the network {_WHEN[when]}"
-        findings.append(Finding(f"BKT-{when}-008", message, Severity.CRITICAL, name))
+        parts = {h.line for k in ("network", "secrets", "environ") for h in by_kind.get(k, [])}
+        findings.append(
+            Finding(f"BKT-{when}-008", message, Severity.CRITICAL, name, where(sorted(parts)))
+        )
     for kind, kind_hits in notes.items():
         details = "; ".join(sorted({h.detail for h in kind_hits}))
         message = f"runs only on request, not at install: {details}"
         lines = [h.line for h in kind_hits]
         rule = _CODE_RULES[kind][0].format(when=when)
-        findings.append(Finding(rule, message, Severity.INFO, name, {"lines": lines}))
+        findings.append(Finding(rule, message, Severity.INFO, name, where(lines)))
     return findings, exec_files
+
+
+def _line_hash(line: str) -> str:
+    return hashlib.sha256(line.encode("utf-8", "replace")).hexdigest()[:16]
 
 
 def _skipped(spans: Sequence[tuple[int, int, str | None]], line: int) -> str | None:
@@ -1063,7 +1150,7 @@ def _not_run_by_pip(
     if pyproject in files:
         try:
             toml = tomllib.loads(files[pyproject].decode("utf-8", "replace"))
-        except tomllib.TOMLDecodeError:
+        except (tomllib.TOMLDecodeError, RecursionError):
             return []
         build = toml.get("build-system", {})
         if not isinstance(build, dict) or "backend-path" in build:
