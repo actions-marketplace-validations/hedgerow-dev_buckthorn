@@ -544,7 +544,7 @@ def test_a_marker_drops_a_dependency_this_machine_would_not_install(pypi):
     pypi.publish(
         "pkg",
         "1.0",
-        requires=['winonly==1.0; sys_platform == "win32"', "helper==1.0"],
+        requires=['py2only==1.0; python_version < "3"', "helper==1.0"],
     )
     pypi.publish("helper", "1.0")
     results = _check(_stdio("uvx", "pkg==1.0"))
@@ -552,7 +552,7 @@ def test_a_marker_drops_a_dependency_this_machine_would_not_install(pypi):
         "s/helper-1.0-py3-none-any.whl",
         "s/pkg-1.0-py3-none-any.whl",
     ]
-    assert not any("winonly" in url for url in pypi.calls)
+    assert not any("py2only" in url for url in pypi.calls)
 
 
 def test_only_requested_extras_are_installed(pypi):

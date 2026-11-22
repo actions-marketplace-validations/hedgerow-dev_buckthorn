@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 import re
 import urllib.parse
 
@@ -279,7 +280,9 @@ def test_hf_cache_snapshot_links_into_blobs_are_read(tmp_path):
     }
     for n, (name, text) in enumerate(texts.items()):
         (blobs / str(n)).write_text(text)
-        (snapshot / name).symlink_to(f"../../blobs/{n}")
+        # Relative, as huggingface_hub writes them; os.path.join, since Windows
+        # does not resolve a relative link written with forward slashes.
+        (snapshot / name).symlink_to(os.path.join("..", "..", "blobs", str(n)))
     assert ("BKT-HF-002", "modeling_x.py") in rules(hf.scan_folder(snapshot))
 
 

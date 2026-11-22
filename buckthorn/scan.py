@@ -82,7 +82,10 @@ def read_archive(path: Path) -> tuple[list[tuple[str, bytes]], list[Finding]]:
         if name.endswith(_ZIP_SUFFIXES):
             with zipfile.ZipFile(path) as zf:
                 files = [i for i in zf.infolist() if not i.is_dir()]
-                return _read_members(path, ((i.filename, partial(zf.open, i)) for i in files))
+                # On Windows zipfile turns \ into / in .filename; pip on Linux keeps it.
+                # orig_filename is the raw name, cut at a NUL as .filename is.
+                named = ((i.orig_filename.split("\0")[0], partial(zf.open, i)) for i in files)
+                return _read_members(path, named)
         if name.endswith(_TAR_SUFFIXES):
             with tarfile.open(path, "r:*") as tf:
                 return _read_members(path, _tar_entries(tf))

@@ -1,6 +1,7 @@
 """Inputs built to crash the scanner or hang it: each must end quickly with a result."""
 
 import io
+import os
 import tarfile
 import time
 
@@ -80,8 +81,13 @@ def test_installed_record_with_a_huge_field_is_a_coverage_gap(tmp_path):
     assert "BKT-SKIP-005" in rules
 
 
+@pytest.mark.parametrize("nofollow", [True, False], ids=["O_NOFOLLOW", "no-O_NOFOLLOW"])
 @pytest.mark.parametrize("flag", ["--output", "--receipt", "--write-allowlist"])
-def test_reports_are_not_written_through_a_symlink(make_wheel, tmp_path, flag):
+def test_reports_are_not_written_through_a_symlink(
+    make_wheel, tmp_path, monkeypatch, flag, nofollow
+):
+    if not nofollow:  # Windows has no O_NOFOLLOW
+        monkeypatch.delattr(os, "O_NOFOLLOW", raising=False)
     victim = tmp_path / "victim.sh"
     victim.write_text("echo hi\n")
     link = tmp_path / "report.out"

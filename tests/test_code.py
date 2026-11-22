@@ -350,20 +350,23 @@ def test_making_a_socket_without_using_it_is_not_network():
 # the limit for it can crash the interpreter on deeper code. So 3.11 leaves such
 # files unread (not_verified) instead.
 PARSES_DEEP = pytest.mark.skipif(sys.version_info < (3, 12), reason="3.12+ parser")
+# Past the default recursion limit (1,000). Python's parser has a fixed nesting
+# limit that is lower on Windows; deeper code there is a coverage gap.
+DEEP = 1_500 if sys.platform == "win32" else 5_000
 
 
 @PARSES_DEEP
 def test_deeply_nested_code_is_read(recwarn):
     # sympy ships a file nested deeper than the default recursion limit.
-    assert _kinds("x = " + "1 + " * 5000 + "1\nimport os\nos.system('x')") == ["process"]
-    deep = "x = " + "1 + " * 5000 + "1\nimport os\ndef f():\n    os.system('x')\nf()\n"
+    assert _kinds("x = " + "1 + " * DEEP + "1\nimport os\nos.system('x')") == ["process"]
+    deep = "x = " + "1 + " * DEEP + "1\nimport os\ndef f():\n    os.system('x')\nf()\n"
     assert _kinds(deep, top_level_only=True) == ["process"]
 
 
 @PARSES_DEEP
 def test_long_attribute_chains_do_not_hide_imports():
     # A chain past the default recursion limit must not switch the import map off.
-    source = "x = a" + ".b" * 3000 + "()\nfrom main import main\nmain()\n"
+    source = "x = a" + ".b" * min(DEEP, 3000) + "()\nfrom main import main\nmain()\n"
     assert imported_functions(source)["main"] == {"main": "called at install"}
 
 
@@ -510,7 +513,7 @@ def test_eval_of_an_ordinary_literal_is_read_in_place():
 
 @PARSES_DEEP
 def test_setup_py_readers_are_linear_in_long_chains_and_many_names():
-    chain = "x = a" + ".sys.argv" * 1_500 + "\n"
+    chain = "x = a" + ".sys.argv" * min(1_500, DEEP // 2) + "\n"
     names = "".join(f"d{i} = {{'k': 1}}\nf(**d{i})\n" for i in range(20_000))
     start = time.monotonic()
     for source in (chain, names):

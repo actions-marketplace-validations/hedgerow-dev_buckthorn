@@ -38,7 +38,12 @@ def make_wheel(tmp_path: Path):
         path = tmp_path / name
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
             for member, data in files.items():
-                zf.writestr(member, data)
+                if "\\" in member:  # zipfile turns \ into / on Windows: keep the name as given
+                    info = zipfile.ZipInfo(member)
+                    info.filename = member
+                    zf.writestr(info, data, zipfile.ZIP_DEFLATED)
+                else:
+                    zf.writestr(member, data)
         return path
 
     return _make

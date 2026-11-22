@@ -601,7 +601,10 @@ def _printable(text: str) -> str:
 
 def _write(path: Path, text: str) -> None:
     """Never through a symlink: the Action's default report path is in the checkout it checks."""
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    if not nofollow and os.path.islink(path):  # Windows has no O_NOFOLLOW: check first
+        raise OSError(f"{path} is a symlink")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | nofollow
     with open(os.open(path, flags, 0o666), "w", encoding="utf-8") as fh:
         fh.write(text)
 

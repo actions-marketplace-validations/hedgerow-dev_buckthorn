@@ -174,7 +174,7 @@ def test_precommit_file_names_cannot_be_read_as_options(tmp_path, monkeypatch, c
     monkeypatch.chdir(tmp_path)
     assert main([*entry[1:], "--write-allowlist=x/uv.lock"]) == 2
     assert not (tmp_path / "x").exists()
-    assert "--write-allowlist=x/uv.lock" in capsys.readouterr().err
+    assert "--write-allowlist=x" in capsys.readouterr().err  # x\\uv.lock on Windows
 
 
 def test_json_report_carries_a_schema_version(make_wheel, capsys):

@@ -1,6 +1,7 @@
 """Regression tests for the code review of the m1-artifact-scan branch."""
 
 import io
+import os
 import tarfile
 
 import pytest
@@ -101,9 +102,8 @@ def test_exec_literal_functions_do_not_count_at_import():
     assert {h.kind for h in analyse(source, False)} == {"process"}
 
 
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="no FIFOs on Windows")
 def test_unreadable_unowned_file_does_not_crash_env(tmp_path):
-    import os
-
     from buckthorn.env import scan_env
 
     site = tmp_path / "site-packages"

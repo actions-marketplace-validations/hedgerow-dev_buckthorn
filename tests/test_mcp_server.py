@@ -30,6 +30,7 @@ def test_missing_path_raises_value_error(tmp_path):
         scan_path(str(tmp_path / "absent.whl"))
 
 
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="no FIFOs on Windows")
 def test_fifo_raises_value_error_instead_of_hanging(tmp_path):
     fifo = tmp_path / "x.whl"
     os.mkfifo(fifo)

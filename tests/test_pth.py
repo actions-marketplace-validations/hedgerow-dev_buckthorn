@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from buckthorn.findings import verdict
@@ -66,6 +68,15 @@ def test_dotted_paths_that_land_at_the_top_still_count(make_wheel):
     path = make_wheel({"./a.pth": SHADOW, "pkg/../b.pth": SHADOW, "pkg\\c.pth": "/x\n"})
     findings = scan_wheel(path)
     assert sorted(f.file_path for f in findings) == ["./a.pth", "pkg/../b.pth"]
+
+
+def test_backslash_names_read_the_same_on_windows(make_wheel, monkeypatch):
+    """zipfile turns \\ into / when os.sep is \\. pip on Linux keeps it, so read the raw name."""
+    path = make_wheel({"pkg\\x.pth": SHADOW})
+    linux = [(f.rule_id, f.file_path) for f in scan_wheel(path)]
+    monkeypatch.setattr(os, "sep", "\\")
+    assert [(f.rule_id, f.file_path) for f in scan_wheel(path)] == linux
+    assert ("BKT-PTH-002", "pkg\\x.pth") in linux
 
 
 # An sdist's setup.py, build backend or their config can put any file it ships at

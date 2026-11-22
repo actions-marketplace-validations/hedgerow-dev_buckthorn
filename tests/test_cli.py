@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 
 from buckthorn.cli import main
 
@@ -40,7 +41,7 @@ def test_folder_scans_every_artifact_in_it(make_wheel, make_sdist, tmp_path, cap
     (tmp_path / "notes.txt").write_text("not an artifact")
     assert main(["scan", "--format", "json", str(tmp_path)]) == 1
     report = json.loads(capsys.readouterr().out)
-    assert [(a["path"].rsplit("/", 1)[-1], a["verdict"]) for a in report["artifacts"]] == [
+    assert [(os.path.basename(a["path"]), a["verdict"]) for a in report["artifacts"]] == [
         ("pkg-1.0-py3-none-any.whl", "flagged"),
         ("pkg-1.0.tar.gz", "clean"),
     ]
