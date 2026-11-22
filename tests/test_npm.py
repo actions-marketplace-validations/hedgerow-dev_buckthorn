@@ -514,6 +514,7 @@ def test_long_name_is_cut_short_in_the_message(make_npm):
         b"[" * 100_000 + b"]" * 100_000,  # nested too deep to parse
         json.dumps(MANIFEST | {"description": "a" * (6 * 1024 * 1024)}).encode(),  # too large
     ],
+    ids=["not-json", "not-an-object", "bad-encoding", "too-deep", "too-large"],
 )
 def test_package_json_that_cannot_be_read_fails_closed(make_npm, raw):
     findings = scan_artifact(make_npm(raw=raw))

@@ -62,3 +62,11 @@ def make_sdist(tmp_path: Path):
         return path
 
     return _make
+
+
+def pytest_collection_modifyitems(items):
+    """A test id is set as PYTEST_CURRENT_TEST, and Windows caps that at 32,767 characters.
+    Long ids also flood every traceback. Give big parameters an `ids=`."""
+    long = [item.nodeid[:100] for item in items if len(item.nodeid) > 2000]
+    if long:
+        raise pytest.UsageError(f"test ids too long, give them ids=: {long}")
