@@ -140,8 +140,17 @@ def test_a_byte_order_mark_is_allowed():
 
 
 def test_deep_nesting_is_a_value_error():
-    with pytest.raises(ValueError, match="nested"):
+    # Python 3.13 runs out of recursion here ("nested"); 3.14 parses to the cut-off end.
+    with pytest.raises(ValueError):
         mcp_config.servers('{"a":' * 100_000)
+
+
+def test_deep_but_valid_nesting_is_read_or_a_value_error():
+    deep = '{"a":' * 100_000 + "1" + "}" * 100_000
+    try:
+        assert mcp_config.servers(deep) is None  # 3.14 reads it: no mcpServers
+    except ValueError as exc:
+        assert "nested" in str(exc)  # up to 3.13
 
 
 @pytest.mark.parametrize("text", ['{"name": "x"}', "requests==2.0 --hash=sha256:aa\n", "[1]"])
