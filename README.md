@@ -9,9 +9,10 @@
 Static checks for Python and npm packages, MCP configs and Hugging Face remote code.<br>
 Nothing is installed, imported or run.
 
-![License: MIT](https://img.shields.io/badge/license-MIT-2f6f4f)
-![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-2f6f4f)
-![Status: preview](https://img.shields.io/badge/status-0.1%20preview-b58900)
+![License MIT](https://img.shields.io/badge/license-MIT-013D5A?style=flat-square&labelColor=013D5A)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-013D5A?style=flat-square&labelColor=013D5A)
+![Status 0.1 preview](https://img.shields.io/badge/status-0.1_preview-708C69?style=flat-square&labelColor=013D5A)
+![Code it runs: none](https://img.shields.io/badge/code_it_runs-none-F4A25B?style=flat-square&labelColor=013D5A)
 
 </div>
 
@@ -26,22 +27,22 @@ colourful_logs-1.4.2-py3-none-any.whl: flagged
 
 A package can run code the moment you install it, every time Python starts,
 or as soon as you import it. Buckthorn reads that code first, straight from
-the wheel, sdist or npm tarball, and tells you what it does. It is part of
-Hedgerow, next to [Hayward](https://github.com/hedgerow-dev/hayward) for model files.
+the wheel, sdist or npm tarball, and tells you what it does.
 
 ## What it is for
 
-**Your agent's MCP config.** An agent starts every server in `.mcp.json` with
-your credentials, and `uvx some-server` pulls whatever was released that day,
-dependencies included. `buckthorn check .mcp.json` reads that install set.
+**A quiet CI gate.** `buckthorn check uv.lock` reads every pinned file before
+anything is installed. On packages it had never seen, it raised about a
+quarter of GuardDog's false alarms ([numbers below](#how-well-it-works)).
 
 **Upgrades.** `buckthorn diff requests==2.32.3 requests==2.32.4` shows only
 what the new version adds. If a maintainer account is taken over, the new
 code is in that diff.
 
-**A quiet CI gate.** `buckthorn check uv.lock` reads every pinned file before
-anything is installed. On packages it had never seen, it raised about a
-quarter of GuardDog's false alarms (numbers below).
+**Your agent's MCP config** (preview). An agent starts every server in
+`.mcp.json` with your credentials, and `uvx some-server` pulls whatever was
+released that day, dependencies included. `buckthorn check .mcp.json` reads
+that install set.
 
 ## Install
 
@@ -62,97 +63,24 @@ buckthorn diff requests==2.32.3 requests==2.32.4   # only what an upgrade adds
 buckthorn scan --format json ./dist                # machine-readable
 ```
 
-`check` and `diff` fetch from PyPI over https only (pypi.org and
-files.pythonhosted.org) and check each file's sha256 before reading it.
-`check` reads `requirements.txt` with hashes, `uv.lock` and `poetry.lock`.
-By default it checks the file this machine would install for each package;
-`--all-files` checks every platform's.
+- `check` reads `requirements.txt` with hashes, `uv.lock` and `poetry.lock`.
+- `check` and `diff` fetch from PyPI over https only (pypi.org and
+  files.pythonhosted.org), and check each file's sha256 before reading it.
+- By default `check` reads the file this machine would install for each
+  package. `--all-files` reads every platform's.
 
 ## What the verdict means
 
-- `clean`: nothing flagged in what runs at install, at start-up or at import.
-  Code that only runs when you call it is not read, so `clean` is not "safe".
-- `flagged`: at least one finding above info. Read it, then fix or accept it.
-- `not_verified`: something could not be read. Never reported as clean.
+| Verdict | Meaning |
+|---|---|
+| `clean` | Nothing flagged in what runs at install, at start-up or at import. Code that only runs when you call it is not read, so `clean` is not "safe". |
+| `flagged` | At least one finding above info. Read it, then fix or accept it. |
+| `not_verified` | Something could not be read. Never reported as clean. |
 
 Exit codes: 0 clean, 1 flagged or not_verified (`--allow-not-verified` lets
 not_verified pass), 2 a usage or input error.
 
-## How well it works
-
-We tested it on packages it had never seen, with the plan committed before
-the first scan
-([PROTOCOL.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/heldout/PROTOCOL.md)).
-That run used commit `c80b090`, from before the last fixes in 0.1.0.
-
-| On unseen packages | Buckthorn | GuardDog 3.2.0 |
-|---|---|---|
-| Malicious archives flagged (430) | 52.3% | 68.6% |
-| Benign files flagged (5,723) | 5.4% | 23.7% |
-
-Per project, Buckthorn flagged 8.8% of PyPI's ranks 1,001 to 3,000 and 5.4%
-of recently updated projects. So expect a flag or two on a real lockfile the
-first time; `--write-allowlist` (below) is for that.
-
-Buckthorn misses more malware than GuardDog. Most of what it misses runs only
-when you call a function, like a downloader behind `fetch(url)`. Of 50 misses
-we looked at, only one was install, start-up or import code a rule should
-have caught. In our view it works best next to a feed of known malware, such
-as OSV's malicious-packages data, and a broader scanner.
-
-On the corpora we tuned on, it flags about 90% of pypi_malregistry and 85% of
-DataDog's malicious PyPI samples. Those are not the headline numbers, since
-the rules were written against that data. The full write-up is in
-[eval/heldout/RESULTS.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/heldout/RESULTS.md).
-
-`BUCKTHORN_CALL_TIME=1` also reads code that only runs when called, and flags
-five combinations, such as fetching code and running it. It is off by
-default, because it has not been tested on unseen data yet.
-
-## Check an agent's MCP config (preview)
-
-An agent starts every MCP server in its config as soon as it loads it, with
-your credentials, and nobody looks at what `uvx some-server` pulls in that
-day. Point `check` at the config:
-
-```bash
-buckthorn check .mcp.json                      # Claude Code
-buckthorn check .vscode/mcp.json               # VS Code
-buckthorn check ~/.cursor/mcp.json             # Cursor (Windsurf and Claude Desktop too)
-```
-
-For each server launched with `uvx`, `uv run --with` or `pipx run`, it fetches
-the PyPI release that would run and scans it, then every package that `uvx` or
-`pipx` would install with it. Dependencies come from the release's static
-metadata (`Requires-Dist`), never from installing or building the package. A
-dependency with no exact version pin is counted in the summary: the newest
-match was checked, and a later release is what the next start installs.
-Servers with no version pinned are counted too. npm and Docker servers are
-reported as not checked yet. Values from `env`, arguments and URLs are never
-printed.
-
-Rules are listed in
-[docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md).
-The design is in [SPEC.md](https://github.com/hedgerow-dev/buckthorn/blob/main/SPEC.md).
-
-## npm packages (preview)
-
-`scan` reads npm tarballs too: the `.tgz` the registry serves, or what
-`npm pack` writes.
-
-```bash
-npm pack left-pad@1.3.0 && buckthorn scan left-pad-1.3.0.tgz
-```
-
-It reads the scripts in `package.json`, the JavaScript that `preinstall`,
-`install` and `postinstall` run, and the code that runs when the package is
-loaded. `package-lock.json` is not read yet. npm support is newer than the
-Python side: it was tuned on the top 1,000 npm packages and 200 malicious
-ones, and has not been tested on unseen packages. The rules are the
-`BKT-NPM-*` ones in
-[docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md#npm).
-
-## In CI and pre-commit
+## In CI
 
 The GitHub Action checks a lockfile before anything is installed. It fails
 the build on a finding and writes SARIF for code scanning:
@@ -173,14 +101,13 @@ steps:
       sarif_file: buckthorn.sarif
 ```
 
-The check reads the files pip would pick for your project's Python. It uses
-the repository's `.python-version`, or 3.12 when there is none; set
-`python-version` if your project installs with another one.
-
-All inputs, including `allowlist` and signed receipts, are in
-[action.yml](https://github.com/hedgerow-dev/buckthorn/blob/main/action.yml).
-Tags are shown for reading. For a security check, pin each action to a
-commit SHA instead, as `action.yml` does for its own steps.
+- **Python version.** The check reads the files pip would pick for your
+  project's Python: the repository's `.python-version`, or 3.12 when there is
+  none. Set `python-version` if your project installs with another one.
+- **Pin by SHA.** Tags are shown here for reading. For a security check, pin
+  each action to a commit SHA instead, as `action.yml` does for its own steps.
+- **All inputs**, including `allowlist` and signed receipts, are in
+  [action.yml](https://github.com/hedgerow-dev/buckthorn/blob/main/action.yml).
 
 **The first run.** A real lockfile often has a package or two that does one
 of these things on purpose, like setuptools' `.pth` file. Accept what is
@@ -194,7 +121,7 @@ Read the file before you commit it, and pass it as the action's `allowlist`.
 Each entry is pinned to the version it was found in, so an upgrade that keeps
 the same behaviour shows up again for review.
 
-As a pre-commit hook, it runs whenever `uv.lock`, `poetry.lock` or a
+**Pre-commit.** The hook runs whenever `uv.lock`, `poetry.lock` or a
 `requirements*.txt` changes:
 
 ```yaml
@@ -205,7 +132,81 @@ repos:
       - id: buckthorn-check
 ```
 
-## Model repos with remote code (preview)
+## How well it works
+
+We tested it on packages it had never seen, with the plan committed before
+the first scan
+([PROTOCOL.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/heldout/PROTOCOL.md)).
+That run used commit `c80b090`, from before the last fixes in 0.1.0.
+
+| On unseen packages | Buckthorn | GuardDog 3.2.0 |
+|---|---|---|
+| Malicious archives flagged (430) | 52.3% | 68.6% |
+| Benign files flagged (5,723) | 5.4% | 23.7% |
+
+- **Quiet on real projects.** Per project, Buckthorn flagged 8.8% of PyPI's
+  ranks 1,001 to 3,000 and 5.4% of recently updated projects. So expect a
+  flag or two on a real lockfile the first time; `--write-allowlist` is for
+  that.
+- **It misses more malware than GuardDog.** Most of what it misses runs only
+  when you call a function, like a downloader behind `fetch(url)`. Of 50
+  misses we looked at, only one was install, start-up or import code a rule
+  should have caught. In our view it works best next to a feed of known
+  malware, such as OSV's malicious-packages data, and a broader scanner.
+- **Tuning data is not the headline.** On the corpora we tuned on, it flags
+  about 90% of pypi_malregistry and 85% of DataDog's malicious PyPI samples.
+  The rules were written against that data, so those numbers say less.
+
+The full write-up is in
+[eval/heldout/RESULTS.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/heldout/RESULTS.md).
+
+`BUCKTHORN_CALL_TIME=1` also reads code that only runs when called, and flags
+five combinations, such as fetching code and running it. It is off by
+default, because it has not been tested on unseen data yet.
+
+## Also in preview
+
+### An agent's MCP config
+
+An agent starts every MCP server in its config as soon as it loads it, with
+your credentials, and nobody looks at what `uvx some-server` pulls in that
+day. Point `check` at the config:
+
+```bash
+buckthorn check .mcp.json                      # Claude Code
+buckthorn check .vscode/mcp.json               # VS Code
+buckthorn check ~/.cursor/mcp.json             # Cursor (Windsurf and Claude Desktop too)
+```
+
+- For each server launched with `uvx`, `uv run --with` or `pipx run`, it
+  fetches the PyPI release that would run and scans it, then every package
+  that `uvx` or `pipx` would install with it.
+- Dependencies come from the release's static metadata (`Requires-Dist`),
+  never from installing or building the package.
+- A dependency with no exact version pin is counted in the summary: the
+  newest match was checked, and a later release is what the next start
+  installs. Servers with no version pinned are counted too.
+- npm and Docker servers are reported as not checked yet.
+- Values from `env`, arguments and URLs are never printed.
+
+### npm packages
+
+`scan` reads npm tarballs too: the `.tgz` the registry serves, or what
+`npm pack` writes.
+
+```bash
+npm pack left-pad@1.3.0 && buckthorn scan left-pad-1.3.0.tgz
+```
+
+It reads the scripts in `package.json`, the JavaScript that `preinstall`,
+`install` and `postinstall` run, and the code that runs when the package is
+loaded. `package-lock.json` is not read yet. npm support is newer than the
+Python side: it was tuned on the top 1,000 npm packages and 200 malicious
+ones, and has not been tested on unseen packages. The rules are the
+`BKT-NPM-*` ones in
+[docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md#npm).
+
+### Model repos with remote code
 
 `trust_remote_code=True` runs the model repo's own Python when you load it.
 Buckthorn reads that code first: the files `auto_map` names, what they import,
@@ -226,7 +227,12 @@ since a verdict for one commit says nothing about the next. `forward` and
 [docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md#hugging-face-remote-code); how this could plug
 into Hayward is in [docs/hf-remote-code.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/hf-remote-code.md).
 
-## Accepting a finding
+## Reference
+
+<details>
+<summary><b>Accepting a finding</b></summary>
+
+<br>
 
 Some real packages do what Buckthorn looks for on purpose: setuptools and
 coverage.py install `.pth` files that run at start-up. Once you have looked
@@ -255,14 +261,24 @@ For an npm tarball, `package` is the name in the file name. The registry
 names `@scope/pkg` as `pkg-1.0.0.tgz`, so an entry for `pkg` also covers
 another scope's `pkg`. Pin `version` to keep it narrow.
 
-## Output formats
+</details>
+
+<details>
+<summary><b>Output formats</b></summary>
+
+<br>
 
 `--format text` (default), `json`, or `sarif` for GitHub code scanning.
 
 The JSON report carries a `schema_version`. It goes up when a key changes
 meaning or is removed. New keys can appear in any release.
 
-## Scan receipts
+</details>
+
+<details>
+<summary><b>Scan receipts</b></summary>
+
+<br>
 
 `--receipt FILE` also writes an unsigned in-toto statement: each artifact's
 sha256 and what Buckthorn found in it, taken before `--allowlist`. It has the
@@ -270,15 +286,34 @@ same shape as Hayward's receipts. It is analysis evidence, not a safety
 certificate. In GitHub Actions, set the action's `receipt` and `attest:
 "true"` inputs to have GitHub sign it with Sigstore.
 
-## For coding agents (MCP)
+</details>
+
+<details>
+<summary><b>For coding agents (MCP server)</b></summary>
+
+<br>
 
 ```bash
 pip install "buckthorn[mcp]"
 buckthorn mcp
 ```
 
-A stdio MCP server with three read-only tools: `scan_path` (a wheel, sdist or
-folder of them, no network), `check_release` (a PyPI `name` and `version`:
-the file this machine would install, fetched and hash-checked as `check`
-does) and `check_mcp_config` (the text of an MCP config, checked as `check`
-does). All return the same JSON as `--format json`.
+A stdio MCP server with three read-only tools, all returning the same JSON as
+`--format json`:
+
+- `scan_path`: a wheel, sdist or folder of them, no network.
+- `check_release`: a PyPI `name` and `version`. The file this machine would
+  install, fetched and hash-checked as `check` does.
+- `check_mcp_config`: the text of an MCP config, checked as `check` does.
+
+</details>
+
+Every rule is listed in
+[docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md),
+and the design is in
+[SPEC.md](https://github.com/hedgerow-dev/buckthorn/blob/main/SPEC.md).
+
+---
+
+Buckthorn is MIT licensed and part of [Hedgerow](https://hedgerow.dev), next
+to [Hayward](https://github.com/hedgerow-dev/hayward) for model files.
