@@ -77,7 +77,10 @@ jobs:
         run: |
           wheel=$(ls dist/*.whl)
           pip install "${wheel}[dev]"
-      - run: pytest
+      # A hung test prints every thread's traceback after 60 s, and the step
+      # stops itself, so the log is kept (a cancelled job's log can be lost).
+      - run: pytest -o faulthandler_timeout=60
+        timeout-minutes: 10
       - run: buckthorn --version
 
   publish:
