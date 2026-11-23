@@ -369,16 +369,21 @@ no code: meson's test cases (vendored in numpy) ship empty
 ## Lockfiles
 
 `buckthorn check` fetches pinned artifacts from PyPI and checks each one's
-sha256 before reading a byte of it. Lockfiles list every platform's wheels,
+sha256 before reading a byte of it. For `package-lock.json` and
+`npm-shrinkwrap.json` (version 2 or 3) it fetches each tarball from
+registry.npmjs.org (by name and version when an entry has no `resolved`
+URL) and checks its sha512 `integrity` the same way; a package
+whose `os` or `cpu` field rules out this machine is skipped like another
+platform's wheel. Lockfiles list every platform's wheels,
 so by default only the file this machine would install is checked for each
 package (the best-matching wheel, else the sdist). `--all-files` checks every
 pinned file.
 
 | Rule | Severity | Meaning |
 |---|---|---|
-| BKT-LOCK-001 | high | The downloaded file's sha256 is not the one the lockfile pins. The file is not scanned. |
-| BKT-LOCK-002 | info (coverage) | A pin could not be checked: not pinned with `==` and a hash, from another index or a git or local source, not found on PyPI, not fetched, or a file name that is not a plain wheel or sdist name. |
-| BKT-LOCK-003 | info | No file of a pin installs on this machine (a Windows-only wheel on macOS, say), so none was checked. `--all-files` checks them all. |
+| BKT-LOCK-001 | high | The downloaded file's hash (sha256, or sha512 for npm) is not the one the lockfile pins. The file is not scanned. |
+| BKT-LOCK-002 | info (coverage) | A pin could not be checked: not pinned with `==` and a hash, from another index or a git or local source, not found on PyPI, not fetched, or a file name that is not a plain wheel or sdist name. For npm: a `resolved` URL off registry.npmjs.org (git, local, another registry), no sha512 `integrity`, or a lockfile version 1. |
+| BKT-LOCK-003 | info | No file of a pin installs on this machine (a Windows-only wheel on macOS, or an npm package for another `os` or `cpu`), so none was checked. `--all-files` checks them all. |
 
 ## MCP configs
 

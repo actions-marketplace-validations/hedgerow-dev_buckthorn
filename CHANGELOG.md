@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `check` reads `package-lock.json` and `npm-shrinkwrap.json` (preview). Each
+  tarball is fetched from registry.npmjs.org and checked against its sha512
+  integrity before it is read. The Action and the pre-commit hook take them.
+
 ## 0.1.1
 
 - A shorter Action description, so the Action can be listed on the GitHub

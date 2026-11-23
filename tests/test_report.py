@@ -157,9 +157,18 @@ def test_precommit_hook_files_pattern_matches_what_check_reads():
         "requirements.txt",
         "requirements-dev.txt",
         "sub/uv.lock",
+        "package-lock.json",
+        "web/npm-shrinkwrap.json",
     ]:
         assert re.search(pattern, name), name
-    for name in ["Pipfile.lock", "requirements.in.bak", "notes.txt", "uv.lock.orig"]:
+    for name in [
+        "Pipfile.lock",
+        "requirements.in.bak",
+        "notes.txt",
+        "uv.lock.orig",
+        "package.json",
+        "yarn.lock",
+    ]:
         assert not re.search(pattern, name), name
 
 

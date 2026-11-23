@@ -36,7 +36,7 @@ npm tarballs, an agent's MCP config, and Hugging Face remote code.
 - License compliance.
 - Reputation scores built on data we cannot show (download counts, author age
   as a verdict). These may appear as context, never as the reason for a verdict.
-- Other ecosystems (cargo, RubyGems, Go modules), and npm lockfiles for now.
+- Other ecosystems (cargo, RubyGems, Go modules), and yarn and pnpm lockfiles for now.
 
 ## Inputs
 

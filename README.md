@@ -58,12 +58,14 @@ buckthorn scan pkg-1.2.0-py3-none-any.whl          # one wheel or sdist
 buckthorn scan ./dist                              # a folder of them
 buckthorn scan left-pad-1.3.0.tgz                  # an npm tarball (preview)
 buckthorn check uv.lock                            # every pinned dependency
+buckthorn check package-lock.json                  # the same for npm (preview)
 buckthorn check .mcp.json                          # an agent's MCP servers (preview)
 buckthorn diff requests==2.32.3 requests==2.32.4   # only what an upgrade adds
 buckthorn scan --format json ./dist                # machine-readable
 ```
 
-- `check` reads `requirements.txt` with hashes, `uv.lock` and `poetry.lock`.
+- `check` reads `requirements.txt` with hashes, `uv.lock` and `poetry.lock`,
+  and `package-lock.json` (preview).
 - `check` and `diff` fetch from PyPI over https only (pypi.org and
   files.pythonhosted.org), and check each file's sha256 before reading it.
 - By default `check` reads the file this machine would install for each
@@ -200,7 +202,16 @@ npm pack left-pad@1.3.0 && buckthorn scan left-pad-1.3.0.tgz
 
 It reads the scripts in `package.json`, the JavaScript that `preinstall`,
 `install` and `postinstall` run, and the code that runs when the package is
-loaded. `package-lock.json` is not read yet. npm support is newer than the
+loaded.
+
+`check` reads `package-lock.json` and `npm-shrinkwrap.json` (lockfile
+version 2 or 3). Each tarball is fetched from registry.npmjs.org only and
+checked against its sha512 `integrity` before it is read. An entry with no
+`resolved` URL is fetched from there by name and version. Git, local and
+other-registry sources are reported as not checked. The Action and the
+pre-commit hook take these files too.
+
+npm support is newer than the
 Python side: it was tuned on the top 1,000 npm packages and 200 malicious
 ones, and has not been tested on unseen packages. The rules are the
 `BKT-NPM-*` ones in

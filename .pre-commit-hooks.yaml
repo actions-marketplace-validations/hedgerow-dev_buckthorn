@@ -6,4 +6,4 @@
   entry: buckthorn check --
   language: python
   pass_filenames: true
-  files: '(^|/)(uv\.lock|poetry\.lock|requirements[^/]*\.txt)$'
+  files: '(^|/)(uv\.lock|poetry\.lock|requirements[^/]*\.txt|package-lock\.json|npm-shrinkwrap\.json)$'

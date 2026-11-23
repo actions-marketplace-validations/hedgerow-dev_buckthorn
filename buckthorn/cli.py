@@ -256,6 +256,8 @@ def _package_of(result: Result) -> tuple[str, str]:
     """
     if "==" in result.path:
         package, _, release = result.path.partition("==")
+    elif result.path.startswith("@") and result.path.endswith(".tgz"):
+        package, release = split_artifact_name(result.path)  # @scope/name-1.0.0.tgz from a lock
     elif result.path.lower().endswith(ARTIFACT_SUFFIXES):
         package, release = split_artifact_name(Path(result.path).name)
     elif "@" in result.path:  # a Hub repo at a commit: org/name@sha
@@ -386,7 +388,10 @@ def _check_lockfile(path: Path, cache_dir: Path | None, all_files: bool) -> list
         print(_printable(name), file=sys.stderr)  # MCP config keys are not checked names
 
     try:
-        servers = mcp_config.servers(path.read_text(encoding="utf-8"))
+        # A lockfile by name is never read as an MCP config: an "mcpServers" key
+        # added to one must not turn it into an empty config that passes.
+        is_lock = path.name in lock.NPM_LOCKFILES
+        servers = None if is_lock else mcp_config.servers(path.read_text(encoding="utf-8"))
         if servers is not None:
             results = mcp_config.check(servers, cache_dir=cache_dir, progress=progress)
         else:

@@ -1,18 +1,24 @@
-"""Check every artifact a lockfile pins: fetch it from PyPI, check its hash, scan it.
+"""Check every artifact a lockfile pins: fetch it, check its hash, scan it.
 
 Network goes only to pypi.org (the JSON API, to find the file a pinned hash
-belongs to when the lockfile does not give its URL) and files.pythonhosted.org
-(the file itself), over https, with redirects elsewhere refused. Nothing is
-read until its sha256 matches the lockfile.
+belongs to when the lockfile does not give its URL), files.pythonhosted.org
+(the file itself) and, for package-lock.json, registry.npmjs.org, over https,
+with redirects elsewhere refused. Nothing is read until its hash matches the
+lockfile.
 """
 
 from __future__ import annotations
 
+import base64
+import binascii
 import functools
 import hashlib
 import json
 import os
+import platform
 import re
+import sys
+import tarfile
 import tempfile
 import tomllib
 import urllib.error
@@ -31,6 +37,8 @@ from buckthorn.scan import ARTIFACT_SUFFIXES, MAX_TOTAL_BYTES, scan_artifact
 MAX_DOWNLOAD_BYTES = MAX_TOTAL_BYTES
 MAX_INDEX_BYTES = 16 * 1024 * 1024
 _ALLOWED_HOSTS = frozenset({"pypi.org", "files.pythonhosted.org"})
+_NPM_HOSTS = frozenset({"registry.npmjs.org"})
+NPM_LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json")
 _PYPI_REGISTRY = "https://pypi.org/simple"
 # Artifact file names are used as the last part of a cache path, so they must be plain.
 _SAFE_FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*$")
@@ -74,7 +82,10 @@ def parse(path: Path) -> list[Pin]:
         return _parse_uv(data) if path.name == "uv.lock" else _parse_poetry(data)
     if path.suffix in (".txt", ".in") or path.name.startswith("requirements"):
         return _parse_requirements(text)
-    raise ValueError(f"{path.name}: not a requirements file, uv.lock, poetry.lock or MCP config")
+    raise ValueError(
+        f"{path.name}: not a requirements file, uv.lock, poetry.lock, package-lock.json "
+        "or MCP config"
+    )
 
 
 def _parse_requirements(text: str) -> list[Pin]:
@@ -157,6 +168,8 @@ def check(
     progress, if given, is called with each artifact's file name before it is fetched.
     """
     fetch = fetch or fetch_url
+    if path.name in NPM_LOCKFILES:
+        return _check_npm(path, fetch, cache_dir, progress or (lambda _: None), all_files)
     pins = parse(path)
     results: list[Result] = []
     with tempfile.TemporaryDirectory(prefix="buckthorn-") as tmp:
@@ -280,20 +293,32 @@ def _release_files(pin: Pin, fetch: Fetch) -> dict[str, tuple[str, str]]:
         raise FetchError(f"unexpected index response: {exc}") from exc
 
 
-def _fetch_and_scan(filename: str, sha: str, url: str, fetch: Fetch, cache: Path) -> Result:
+def _fetch_and_scan(
+    filename: str,
+    sha: str,
+    url: str,
+    fetch: Fetch,
+    cache: Path,
+    algorithm: str = "sha256",
+    label: str | None = None,
+) -> Result:
+    """sha is the pinned hex digest in algorithm. The Result is named label (else
+    filename) and carries the file's sha256, whatever the lockfile pinned."""
+    label = label or filename
     # The cache is keyed by the pinned hash and re-checked on every read, so a
     # tampered entry is fetched again rather than trusted.
     target = cache / sha / filename
     cached = target.is_file() and not target.is_symlink()
-    if not (cached and hashlib.sha256(target.read_bytes()).hexdigest() == sha):
+    if not (cached and hashlib.new(algorithm, target.read_bytes()).hexdigest() == sha):
         try:
             data = fetch(url, MAX_DOWNLOAD_BYTES)
         except FetchError as exc:
-            return _gap(filename, sha, f"could not fetch: {exc}")
-        actual = hashlib.sha256(data).hexdigest()
+            return _gap(label, sha if algorithm == "sha256" else "", f"could not fetch: {exc}")
+        actual = hashlib.new(algorithm, data).hexdigest()
         if actual != sha:
-            message = f"downloaded file's sha256 is {actual}, the lockfile pins {sha}"
-            return Result(filename, actual, [Finding("BKT-LOCK-001", message, Severity.HIGH, url)])
+            message = f"downloaded file's {algorithm} is {actual}, the lockfile pins {sha}"
+            finding = Finding("BKT-LOCK-001", message, Severity.HIGH, url)
+            return Result(label, hashlib.sha256(data).hexdigest(), [finding])
         target.parent.mkdir(parents=True, exist_ok=True)
         # Write beside it and rename over it: a link planted at target is replaced,
         # never written through.
@@ -301,20 +326,195 @@ def _fetch_and_scan(filename: str, sha: str, url: str, fetch: Fetch, cache: Path
         partial.unlink(missing_ok=True)
         partial.write_bytes(data)
         os.replace(partial, target)
-    return Result(filename, sha, scan_artifact(target))
+    data_sha256 = sha if algorithm == "sha256" else hashlib.sha256(target.read_bytes()).hexdigest()
+    return Result(label, data_sha256, scan_artifact(target))
+
+
+def _check_npm(
+    path: Path,
+    fetch: Fetch,
+    cache_dir: Path | None,
+    progress: Callable[[str], None],
+    all_files: bool,
+) -> list[Result]:
+    """package-lock.json or npm-shrinkwrap.json, lockfileVersion 2 or 3.
+
+    Each registry tarball is fetched from registry.npmjs.org and checked against
+    its sha512 integrity before it is read. A package npm would not install on
+    this machine (its os or cpu field) is skipped unless all_files.
+    """
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except RecursionError:
+        raise ValueError("JSON nested too deeply to parse") from None
+    packages = data.get("packages") if isinstance(data, dict) else None
+    if not isinstance(packages, dict):
+        message = "no 'packages' map (lockfileVersion 1?): run npm install to update it"
+        return [_gap(path.name, "", message)]
+    results: list[Result] = []
+    seen: set[str] = set()
+    fetched_at: dict[str, Path] = {}  # lock key -> its hash-checked tarball in the cache
+    off_platform: set[str] = set()  # lock keys npm skips here, and so their nested ones
+    here = _npm_platform()
+    with tempfile.TemporaryDirectory(prefix="buckthorn-") as tmp:
+        cache = cache_dir or Path(tmp)
+        # Sorted, so a package comes before the ones nested under it.
+        for key, entry in sorted(packages.items()):
+            if not key or not isinstance(entry, dict) or entry.get("link"):
+                continue  # the project, or a workspace link
+            if "node_modules/" not in key:
+                continue  # a workspace folder: its files are in the repository, not fetched
+            parents = [key[:i] for i in range(len(key)) if key.startswith("/node_modules/", i)]
+            if any(p in off_platform for p in parents):
+                continue  # nested in a package npm does not install here
+            bundle_shape = not entry.get("resolved") and not entry.get("integrity")
+            if bundle_shape and _bundled_in(key, parents, fetched_at):
+                continue  # shipped inside a parent tarball that was read
+            name = str(entry.get("name") or key.rsplit("node_modules/", 1)[-1])
+            version = str(entry.get("version", ""))
+            url, sha512 = entry.get("resolved"), _sha512_of(entry.get("integrity"))
+            if url is None and sha512:  # npm's omit-lockfile-registry-resolved
+                base = name.rsplit("/", 1)[-1]
+                url = f"https://registry.npmjs.org/{name}/-/{base}-{version}.tgz"
+            # The allowlist matches by name and version, so both come from the
+            # tarball fetched, and an entry that claims another is not trusted.
+            fetched = _npm_tarball(url)
+            problem = (
+                f"source {url} is not on registry.npmjs.org, not checked"
+                if not allowed_url(url, _NPM_HOSTS)
+                else "no sha512 integrity, so the tarball cannot be checked"
+                if not sha512
+                else "not a plain npm registry tarball URL"
+                if fetched is None
+                else f"resolved URL is {fetched[0]}@{fetched[1]}, not {name}@{version}"
+                if fetched[:2] != (name, version)
+                else None
+            )
+            if problem or fetched is None:
+                results.append(_gap(f"{name}=={version}", "", problem or ""))
+                continue
+            filename = fetched[2]
+            label = f"{name}-{version}.tgz"
+            fits = all(
+                _npm_allows(entry.get(field) or [], value)
+                for field, value in zip(("os", "cpu"), here, strict=True)
+            )
+            if not (fits or all_files):
+                off_platform.add(key)
+                message = "npm does not install this package on this machine (os, cpu), not checked"
+                info = Finding("BKT-LOCK-003", message + " (--all-files)", Severity.INFO, label)
+                results.append(Result(label, "", [info]))
+                continue
+            # Same integrity, same bytes: scanned once. Only a scanned copy counts.
+            if sha512 not in seen:
+                progress(label)
+                result = _fetch_and_scan(filename, sha512, str(url), fetch, cache, "sha512", label)
+                results.append(result)
+                seen.add(sha512)
+            target = cache / sha512 / filename
+            if target.is_file():
+                fetched_at[key] = target
+    return results
+
+
+def _bundled_in(key: str, parents: list[str], fetched_at: dict[str, Path]) -> bool:
+    """Whether the nearest parent read so far ships this package in its own tarball.
+
+    npm works bundling out from the parent's tarball, so a lockfile flag is not
+    trusted: the package.json must be in the hash-checked tarball itself.
+    """
+    parent = next((p for p in reversed(parents) if p in fetched_at), None)
+    if parent is None:
+        return False
+    return key[len(parent) + 1 :] + "/package.json" in _tar_paths(fetched_at[parent])
+
+
+@functools.lru_cache(maxsize=64)
+def _tar_paths(path: Path) -> frozenset[str]:
+    """Member paths of a tarball below its top folder; empty if it cannot be listed."""
+    try:
+        with tarfile.open(path, "r:gz") as tf:
+            return frozenset(n.split("/", 1)[-1] for n in tf.getnames())
+    except (tarfile.TarError, OSError, EOFError):
+        return frozenset()
+
+
+_NPM_NAME = re.compile(r"^(@[a-z0-9][a-z0-9._~-]*/)?[a-z0-9][a-z0-9._~-]*$", re.IGNORECASE)
+
+
+def _npm_tarball(url: object) -> tuple[str, str, str] | None:
+    """(name, version, file name) from a registry URL /<name>/-/<base>-<version>.tgz."""
+    path = urllib.parse.unquote(urllib.parse.urlparse(str(url)).path)
+    name, sep, filename = path.lstrip("/").partition("/-/")
+    base = name.rsplit("/", 1)[-1]
+    if not (sep and _NPM_NAME.match(name) and _SAFE_FILENAME.match(filename)):
+        return None
+    if not (filename.startswith(f"{base}-") and filename.endswith(".tgz")):
+        return None
+    version = filename[len(base) + 1 : -len(".tgz")]
+    return (name, version, filename) if version else None
+
+
+def _sha512_of(value: object) -> str:
+    """Hex sha512 from an npm integrity string ("sha512-<base64>", maybe among others)."""
+    for part in str(value or "").split():
+        algorithm, _, digest = part.partition("-")
+        if algorithm == "sha512":
+            try:
+                raw = base64.b64decode(digest, validate=True)
+            except (binascii.Error, ValueError):
+                return ""
+            return raw.hex() if len(raw) == 64 else ""
+    return ""
+
+
+def _npm_platform() -> tuple[str | None, str | None]:
+    """This machine as npm names it (process.platform, process.arch); None if unknown."""
+    os_name = next(
+        (
+            n
+            for n in ("linux", "darwin", "win32", "freebsd", "openbsd")
+            if sys.platform.startswith(n)
+        ),
+        None,
+    )
+    machine = platform.machine().lower()
+    cpu = {
+        "x86_64": "x64",
+        "amd64": "x64",
+        "arm64": "arm64",
+        "aarch64": "arm64",
+        "i386": "ia32",
+        "i686": "ia32",
+        "x86": "ia32",
+        "armv7l": "arm",
+    }.get(machine)
+    return os_name, cpu
+
+
+def _npm_allows(values: object, here: str | None) -> bool:
+    """npm's os and cpu fields: a "!x" entry excludes x; any plain entry must include here.
+    Unknown here or an odd field counts as allowed, so more is checked, not less."""
+    if here is None or not isinstance(values, list):
+        return True
+    names = [str(v) for v in values]
+    if f"!{here}" in names:
+        return False
+    wanted = [v for v in names if not v.startswith("!")]
+    return not wanted or here in wanted
 
 
 def _gap(path: str, sha: str, message: str) -> Result:
     return Result(path, sha, [Finding("BKT-LOCK-002", message, Severity.INFO, path)])
 
 
-def allowed_url(url: str | None) -> bool:
+def allowed_url(url: str | None, hosts: frozenset[str] = _ALLOWED_HOSTS) -> bool:
     if not url:
         return False
     parts = urllib.parse.urlparse(url)
     return (
         parts.scheme == "https"
-        and parts.hostname in _ALLOWED_HOSTS
+        and parts.hostname in hosts
         and parts.port in (None, 443)
         and not parts.username
         and not parts.password
@@ -323,15 +523,15 @@ def allowed_url(url: str | None) -> bool:
 
 class _PyPIOnlyRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
-        if not allowed_url(newurl):
+        if not allowed_url(newurl, _ALLOWED_HOSTS | _NPM_HOSTS):
             raise FetchError(f"redirect to {newurl} refused")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch_url(url: str, max_bytes: int) -> bytes:
-    """GET an https URL on PyPI, up to max_bytes. FetchError for anything else."""
-    if not allowed_url(url):
-        raise FetchError(f"{url} is not on PyPI")
+    """GET an https URL on PyPI or the npm registry, up to max_bytes. FetchError otherwise."""
+    if not allowed_url(url, _ALLOWED_HOSTS | _NPM_HOSTS):
+        raise FetchError(f"{url} is not on PyPI or the npm registry")
     opener = urllib.request.build_opener(_PyPIOnlyRedirects)
     # S310: https and the host were checked above, and redirects are checked too.
     request = urllib.request.Request(url, headers={"User-Agent": "buckthorn"})  # noqa: S310
