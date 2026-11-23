@@ -92,7 +92,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: hedgerow-dev/buckthorn@v0.1.0
+  - uses: hedgerow-dev/buckthorn@v0.1.1
     with:
       lockfile: uv.lock
   - uses: github/codeql-action/upload-sarif@v3
@@ -127,7 +127,7 @@ the same behaviour shows up again for review.
 ```yaml
 repos:
   - repo: https://github.com/hedgerow-dev/buckthorn
-    rev: v0.1.0
+    rev: v0.1.1
     hooks:
       - id: buckthorn-check
 ```

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- A shorter Action description, so the Action can be listed on the GitHub
+  Marketplace. No change to what Buckthorn checks.
+
 ## 0.1.0
 
 The first release.

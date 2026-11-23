@@ -1,8 +1,7 @@
 name: Buckthorn dependency check
 description: >-
-  Before dependencies are installed, check every artifact a lockfile pins for
-  code that runs at install, at start-up or at import. Fails the build and
-  writes SARIF.
+  Check every file a lockfile pins for code that runs at install, start-up or
+  import, before anything is installed.
 author: Hedgerow
 
 branding:
