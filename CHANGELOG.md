@@ -1,10 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - `check` reads `package-lock.json` and `npm-shrinkwrap.json` (preview). Each
   tarball is fetched from registry.npmjs.org and checked against its sha512
   integrity before it is read. The Action and the pre-commit hook take them.
+- npm: the commands a `.gyp` or `.gypi` file runs (`<!(cmd)`) are read as
+  install commands. One that runs a file of the package is flagged, and that
+  file is read as install code. A real takeover hid its payload this way.
+- npm: a `binding.gyp` in another folder that an install script builds
+  (`node-gyp rebuild -C sub`), or named in another case (`Binding.gyp`), is
+  no longer missed. Both scanned clean before.
+- A run on 1,477 real hijacked releases (Shai-Hulud and others) is in
+  `eval/real-attacks/RESULTS.md`.
 
 ## 0.1.1
 

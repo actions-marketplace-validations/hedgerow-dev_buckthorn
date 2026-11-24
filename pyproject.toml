@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "buckthorn"
-version = "0.1.1"
+version = "0.2.0"
 description = "Static checks for open-source Python and npm packages: finds install-time, start-up and import-time code before you install."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -79,3 +79,4 @@ select = ["E", "F", "W", "I", "UP", "B", "S"]
 # method, and the held-out scripts stay as they were run, so their results
 # can be reproduced.
 "eval/*" = ["E501", "E741", "S310", "S603", "S607", "S311", "B905", "B023", "UP017"]
+"eval/*/test_*.py" = ["S101"]

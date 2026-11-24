@@ -535,8 +535,14 @@ its own, so the package is `not_verified`:
   `process.dlopen` called at load.
 - An install script builds a `binding.gyp` the package ships (`node-gyp`,
   `node-gyp-build`, `prebuild-install` or `node-pre-gyp` in the command, or
-  npm's implicit `node-gyp rebuild`): gyp can run commands (`<!(cmd)`), and
-  the code it compiles runs native.
+  npm's implicit `node-gyp rebuild`): the code it compiles runs native.
+  The commands gyp runs are read (below). For an install script, a
+  `binding.gyp` in any folder counts, since the script can point node-gyp
+  there (`-C sub`, `cd sub`); npm's implicit build looks only in the top
+  folder. The name matches in any case (`Binding.gyp`), as on a
+  case-insensitive disk.
+- A gyp command built from gyp variables (`<!(node <(x)/a.js)`): what it
+  runs is not followed.
 - An install script runs a file that is not JavaScript (`sh install.sh`, a
   binary), a command line that does not parse, or scripts that run each
   other (`npm run`) more than 32 deep.
@@ -569,8 +575,8 @@ CI still runs them, and approving one is the decision these findings are for.
 
 | Rule | Severity | Meaning |
 |---|---|---|
-| BKT-NPM-SCRIPT-001 | medium | `package.json` has a `preinstall`, `install` or `postinstall` script, which npm runs at install. An empty script runs nothing. Info when the script is only a native build (`node-gyp rebuild`, `node-gyp-build`, `node-gyp-build-optional-packages`, `prebuild-install`, with flags, a flag taking at most one plain word such as `-r napi`, and `\|\|` between them) and the package does not ship that tool itself (a `bin` of that name, or anything under `node_modules/`), or when a `binding.gyp` with no `install` or `preinstall` script makes npm run `node-gyp rebuild` (unless `gypfile` is `false`). Info for `prepare` too: npm runs it for a git dependency or a local install, never for a registry tarball. |
-| BKT-NPM-INSTALL-001 | high | A `preinstall`, `install` or `postinstall` command fetches: it holds `curl`, `wget`, PowerShell download commands or a URL (as for `BKT-INSTALL-001`), itself or in a script it runs with `npm run`. Or the JavaScript it runs uses the network (below). |
+| BKT-NPM-SCRIPT-001 | medium | `package.json` has a `preinstall`, `install` or `postinstall` script, which npm runs at install. An empty script runs nothing. Info when the script is only a native build (`node-gyp rebuild`, `node-gyp-build`, `node-gyp-build-optional-packages`, `prebuild-install`, with flags, a flag taking at most one plain word such as `-r napi`, and `\|\|` between them) and the package does not ship that tool itself (a `bin` of that name, or anything under `node_modules/`), or when a `binding.gyp` with no `install` or `preinstall` script makes npm run `node-gyp rebuild` (unless `gypfile` is `false`). Info for `prepare` too: npm runs it for a git dependency or a local install, never for a registry tarball. Medium too, on the gyp file, when a `.gyp` or `.gypi` file runs a file of the package (below). |
+| BKT-NPM-INSTALL-001 | high | A `preinstall`, `install` or `postinstall` command, or a gyp command (below), fetches: it holds `curl`, `wget`, PowerShell download commands or a URL (as for `BKT-INSTALL-001`), itself or in a script it runs with `npm run`. Or the JavaScript it runs uses the network (below). |
 | BKT-NPM-BIN-001 | high | A `bin` command (or a file under `directories.bin`) named `node`, `npm`, `npx`, `git`, `ssh` or `sh`, in any case and after npm keeps only the base name, unless the package is that tool (`npm` also ships `npx`). A string `bin` is named after the package. |
 | BKT-NPM-META-001 | medium | `package.json` is missing or unreadable, or its `name` and `version` do not give the file name. The registry names `@scope/pkg` 1.0.0 `pkg-1.0.0.tgz` and `npm pack` names it `scope-pkg-1.0.0.tgz`; both match. |
 
@@ -605,6 +611,19 @@ backquotes, and each is read for the JavaScript it runs:
 
 A file the script names that the package does not ship runs nothing. Other
 commands (`node-gyp`, a dependency's bin) are not this package's code.
+
+gyp runs a command when it reads a `.gyp` or `.gypi` file: `<!(cmd)`,
+`<!@(cmd)`, `<@!(cmd)` and the late `>!` and `^!` forms. When an install
+script or npm builds the package's `binding.gyp` (as above), every such file
+the package ships (in any case) is read, and each command is read as an install script run
+from that file's folder. gyp's own files that nothing builds at install
+(`node-gyp`, `npm`) are not read. One that runs a file of the
+package is `BKT-NPM-SCRIPT-001` (medium), and the file is read as install
+code. The usual commands that print a path (`node -p
+"require('node-addon-api').include"`, `node -e "require('nan')"`,
+`pkg-config`) run no file of the package. Gyp files by other names (an
+`includes` entry such as `config.json`) are not read; the native build's
+`BKT-SKIP-003` still stands for them.
 
 The whole file counts, functions too, as for `setup.py`. So does every local
 file it loads (`require`, `import`, `import()`), read like an entry file at

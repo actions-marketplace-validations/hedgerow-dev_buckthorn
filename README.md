@@ -94,7 +94,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: hedgerow-dev/buckthorn@v0.1.1
+  - uses: hedgerow-dev/buckthorn@v0.2.0
     with:
       lockfile: uv.lock
   - uses: github/codeql-action/upload-sarif@v3
@@ -129,7 +129,7 @@ the same behaviour shows up again for review.
 ```yaml
 repos:
   - repo: https://github.com/hedgerow-dev/buckthorn
-    rev: v0.1.1
+    rev: v0.2.0
     hooks:
       - id: buckthorn-check
 ```
@@ -155,6 +155,13 @@ That run used commit `c80b090`, from before the last fixes in 0.1.0.
   misses we looked at, only one was install, start-up or import code a rule
   should have caught. In our view it works best next to a feed of known
   malware, such as OSV's malicious-packages data, and a broader scanner.
+- **Real npm takeovers (preview).** On Shai-Hulud it flagged 790 of 810
+  hijacked releases it had never seen, and `diff` against the version before
+  points at the payload itself. On 588 other npm takeovers it flagged 339:
+  most misses add a malicious dependency rather than change the package.
+  The run found one gap (`binding.gyp` commands), now fixed: 376 with the fix.
+  Details in
+  [eval/real-attacks/RESULTS.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/real-attacks/RESULTS.md).
 - **Tuning data is not the headline.** On the corpora we tuned on, it flags
   about 90% of pypi_malregistry and 85% of DataDog's malicious PyPI samples.
   The rules were written against that data, so those numbers say less.

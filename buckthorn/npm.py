@@ -10,6 +10,7 @@ files nothing loads) are not read and do not block a clean verdict.
 
 from __future__ import annotations
 
+import ast
 import json
 import posixpath
 import re
@@ -42,6 +43,10 @@ _BUILD_COMMAND = re.compile(
 # Tools that build a binding.gyp when they run (prebuild-install and node-pre-gyp
 # fall back to it).
 _NATIVE_BUILDERS = re.compile(r"\b(?:node-gyp|node-gyp-build|prebuild-install|node-pre-gyp)\b")
+# gyp runs the command in <!(cmd) when it reads the file (<!@, <@!, and the late
+# > and ^ forms too). A variable (<(x), <@(x), <|(x)) is not a command.
+_GYP_COMMAND = re.compile(r"[<>^](?:!@?|@!)\(")
+_GYP_EXPANSION = re.compile(r"[<>^][!@|]*\(")
 # Commands a bin must not quietly take over, unless the package is that tool.
 _SHADOWED_COMMANDS = frozenset({"node", "npm", "npx", "git", "ssh", "sh"})
 _OWN_COMMANDS = {"npm": {"npm", "npx"}}  # npm ships npx too
@@ -196,10 +201,11 @@ def _check_scripts(
             findings.append(
                 Finding("BKT-NPM-INSTALL-001", message, Severity.HIGH, "package.json", where)
             )
-        if "binding.gyp" in files and _NATIVE_BUILDERS.search(command):
+        if _binding_gyp(files, anywhere=True) and _NATIVE_BUILDERS.search(command):
             findings.append(_native_build(where))
     # npm adds `node-gyp rebuild` as the install script for a binding.gyp.
-    if "binding.gyp" in files and not (scripts.get("install") or scripts.get("preinstall")):
+    implicit = not (scripts.get("install") or scripts.get("preinstall"))
+    if implicit and _binding_gyp(files, anywhere=False):
         if manifest.get("gypfile") is not False:
             message = "binding.gyp with no install script: npm runs node-gyp rebuild at install"
             findings.append(Finding("BKT-NPM-SCRIPT-001", message, Severity.INFO, "package.json"))
@@ -207,10 +213,34 @@ def _check_scripts(
     return findings
 
 
+def _binding_gyp(files: dict[str, bytes], anywhere: bool) -> bool:
+    """A binding.gyp in the top folder, where npm looks, or (anywhere) in any
+    folder, where a build script can point node-gyp (`-C sub`, `cd sub`). In
+    any case: npm installs onto case-insensitive disks too."""
+    return any(
+        posixpath.basename(path).lower() == "binding.gyp" and (anywhere or "/" not in path)
+        for path in files
+    )
+
+
+def _builds_gyp(manifest: dict[str, Any], files: dict[str, bytes]) -> bool:
+    """A binding.gyp is built at install: an install script runs a builder, or
+    npm adds `node-gyp rebuild` (as in _check_scripts)."""
+    scripts = manifest.get("scripts")
+    scripts = scripts if isinstance(scripts, dict) else {}
+    if any(
+        isinstance(scripts.get(s), str) and _NATIVE_BUILDERS.search(scripts[s])
+        for s in _INSTALL_SCRIPTS
+    ):
+        return _binding_gyp(files, anywhere=True)
+    implicit = not (scripts.get("install") or scripts.get("preinstall"))
+    return implicit and manifest.get("gypfile") is not False and _binding_gyp(files, anywhere=False)
+
+
 def _native_build(where: dict[str, str]) -> Finding:
     """A build from binding.gyp runs at install: gyp can run commands
     (`<!(cmd)`), and what it compiles runs native. Neither is read."""
-    message = "a native build runs at install: binding.gyp and the code it compiles are not read"
+    message = "a native build runs at install: the code it compiles is not read"
     return Finding("BKT-SKIP-003", message, Severity.INFO, "package.json", dict(where))
 
 
@@ -374,7 +404,7 @@ class _Package:
         setup.py is read, and the local files it loads at top level."""
         scripts = self.manifest.get("scripts")
         if not isinstance(scripts, dict):
-            return
+            scripts = {}
         roots: dict[str, tuple[bool, dict[str, str]]] = {}
         for script in _INSTALL_SCRIPTS:
             command = scripts.get(script)
@@ -399,19 +429,77 @@ class _Package:
                     )
                 else:
                     self._inline(script, value, cwd, roots)
+        # When binding.gyp is built, gyp reads it and the .gyp and .gypi files it
+        # includes. gyp's own files (node-gyp, npm) are not built at install.
+        if _builds_gyp(self.manifest, self.files):
+            for path in sorted(self.files):
+                if path.lower().endswith((".gyp", ".gypi")):
+                    self._gyp(path, roots)
         self._read(roots, "INSTALL", set())
 
+    def _gyp(self, path: str, roots: dict[str, tuple[bool, dict[str, str]]]) -> None:
+        """The commands a gyp file runs, each read as an install script run
+        from the file's folder."""
+        name = posixpath.basename(path)
+        folder = posixpath.dirname(path)
+        data = self.files[path]
+        try:  # gyp reads the file as a Python literal
+            if len(data) > MAX_MANIFEST_BYTES:
+                raise ValueError
+            tree = ast.literal_eval(data.decode("utf-8-sig", "replace"))
+        except (ValueError, TypeError, SyntaxError, RecursionError, MemoryError):
+            self.note(f"{name} does not parse, so the commands it runs are not read", path)
+            return
+        strings, todo = [], [tree]
+        while todo:
+            item = todo.pop()
+            if isinstance(item, str):
+                strings.append(item)
+            elif isinstance(item, dict):
+                todo += [*item.keys(), *item.values()]
+            elif isinstance(item, (list, tuple, set)):
+                todo += item
+        for command in [c for string in reversed(strings) for c in _gyp_commands(string)]:
+            shown = " ".join(command.split())[:100]
+            if _GYP_EXPANSION.search(command):
+                self.note(f"{name} runs a command built from gyp variables ({shown})", path)
+                continue
+            if match := FETCHING_COMMAND.search(command):
+                message = f"{name} runs a command at install that fetches ({match.group(0)})"
+                self.found.append(
+                    Finding("BKT-NPM-INSTALL-001", message, Severity.HIGH, self.at(path))
+                )
+            line = f"cd {shlex.quote(folder)} && {command}" if folder else command
+            runs = self._runs({}, line, set())
+            if any(kind == "file" for kind, _, _ in runs):
+                message = f"{name} runs package code at install ({shown})"
+                self.found.append(
+                    Finding("BKT-NPM-SCRIPT-001", message, Severity.MEDIUM, self.at(path))
+                )
+            for kind, value, cwd in runs:
+                if kind == "file":
+                    roots[value] = (True, {})
+                elif kind == "unread":
+                    self.note(f"{name} runs {value}, which is not read", path)
+                elif kind == "code":
+                    self._inline(name, value, cwd, roots, path)
+
     def _inline(
-        self, script: str, code: str, cwd: str, roots: dict[str, tuple[bool, dict[str, str]]]
+        self,
+        script: str,
+        code: str,
+        cwd: str,
+        roots: dict[str, tuple[bool, dict[str, str]]],
+        path: str = "package.json",
     ) -> None:
         """`node -e CODE`: read the code whole, and queue what it loads."""
         try:
             analysis = js.analyse(js.tokenize(code, False), True)
         except js.JSError as exc:
             message = f"{script} script's inline code does not tokenize ({exc.kind})"
-            self.note(message, "package.json")
+            self.note(message, path)
             return
-        for finding in _code_findings("INSTALL", self.at("package.json"), analysis):
+        for finding in _code_findings("INSTALL", self.at(path), analysis):
             finding.metadata["script"] = script
             finding.metadata.pop("lines", None)  # lines of the inline code, not of package.json
             self.found.append(finding)
@@ -791,6 +879,23 @@ class _Package:
                 seen.add((note.message, note.file_path))
                 notes.append(note)
         return found + notes
+
+
+def _gyp_commands(text: str) -> list[str]:
+    """The commands in a gyp file's command expansions, brackets matched as
+    gyp matches them (quotes do not count). One inside another is part of it."""
+    commands, end = [], 0
+    for match in _GYP_COMMAND.finditer(text):
+        if match.start() < end:
+            continue
+        depth, end = 1, len(text)
+        for i in range(match.end(), len(text)):
+            depth += (text[i] in "([{") - (text[i] in ")]}")
+            if depth == 0:
+                end = i
+                break
+        commands.append(text[match.end() : end])
+    return commands
 
 
 def _code_findings(when: str, path: str, analysis: js.Analysis) -> list[Finding]:
