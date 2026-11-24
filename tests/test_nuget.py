@@ -231,7 +231,8 @@ def test_exec_in_an_imported_msbuild_file_is_flagged(make_nupkg, member):
     findings = scan_artifact(make_nupkg({member: _targets(EXEC)}))
     assert _rules(findings) == ["BKT-NUGET-BUILD-001"]
     assert findings[0].severity == "medium"
-    assert findings[0].file_path == member
+    # On Windows, zipfile reads a \ in a member name as /.
+    assert findings[0].file_path in (member, member.replace("\\", "/"))
 
 
 @pytest.mark.parametrize(
