@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- `scan` reads NuGet packages (`.nupkg`, preview): the `.nuspec`, the
+  PowerShell scripts Visual Studio runs from `tools/`, and the MSBuild files
+  NuGet imports into every build (`Exec`, `DownloadFile`, inline task code,
+  and the package files they import), and MSBuild SDK packages
+  (`Sdk/Sdk.props`). Analyzers, task assemblies and swapped build tools are
+  compiled code that runs at build and is not read, so a package that ships
+  them is `not_verified`. New rules: `BKT-NUGET-*`.
+- A run on the top 1,000 NuGet packages is in `eval/nuget-noise/NOTE.md`.
+
 ## 0.2.0
 
 - `check` reads `package-lock.json` and `npm-shrinkwrap.json` (preview). Each

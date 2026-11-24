@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "buckthorn"
-version = "0.2.0"
+version = "0.3.0"
 description = "Static checks for open-source Python and npm packages: finds install-time, start-up and import-time code before you install."
 readme = "README.md"
 requires-python = ">=3.11"

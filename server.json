@@ -9,13 +9,13 @@
     "source": "github",
     "id": "1457679947"
   },
-  "version": "0.2.0",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "buckthorn",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -24,7 +24,7 @@
         {
           "type": "named",
           "name": "--with",
-          "value": "buckthorn[mcp]==0.2.0",
+          "value": "buckthorn[mcp]==0.3.0",
           "description": "Install the mcp extra. uvx does not enable extras on its own, and the mcp subcommand imports the MCP SDK."
         }
       ],

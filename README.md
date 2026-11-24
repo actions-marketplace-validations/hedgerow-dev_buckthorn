@@ -6,7 +6,7 @@
 
 **See what a package runs before you install it.**
 
-Static checks for Python and npm packages, MCP configs and Hugging Face remote code.<br>
+Static checks for Python, npm and NuGet packages, MCP configs and Hugging Face remote code.<br>
 Nothing is installed, imported or run.
 
 ![License MIT](https://img.shields.io/badge/license-MIT-013D5A?style=flat-square&labelColor=013D5A)
@@ -57,6 +57,7 @@ uvx buckthorn --help        # or run it without installing
 buckthorn scan pkg-1.2.0-py3-none-any.whl          # one wheel or sdist
 buckthorn scan ./dist                              # a folder of them
 buckthorn scan left-pad-1.3.0.tgz                  # an npm tarball (preview)
+buckthorn scan newtonsoft.json.13.0.4.nupkg        # a NuGet package (preview)
 buckthorn check uv.lock                            # every pinned dependency
 buckthorn check package-lock.json                  # the same for npm (preview)
 buckthorn check .mcp.json                          # an agent's MCP servers (preview)
@@ -94,7 +95,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v4
-  - uses: hedgerow-dev/buckthorn@v0.2.0
+  - uses: hedgerow-dev/buckthorn@v0.3.0
     with:
       lockfile: uv.lock
   - uses: github/codeql-action/upload-sarif@v3
@@ -129,7 +130,7 @@ the same behaviour shows up again for review.
 ```yaml
 repos:
   - repo: https://github.com/hedgerow-dev/buckthorn
-    rev: v0.2.0
+    rev: v0.3.0
     hooks:
       - id: buckthorn-check
 ```
@@ -223,6 +224,25 @@ Python side: it was tuned on the top 1,000 npm packages and 200 malicious
 ones, and has not been tested on unseen packages. The rules are the
 `BKT-NPM-*` ones in
 [docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md#npm).
+
+### NuGet packages
+
+`scan` reads `.nupkg` files: the `.nuspec`, the PowerShell scripts Visual
+Studio runs from `tools/`, and the MSBuild files NuGet imports into every
+build (`build/`, `buildTransitive/` and the package files they import).
+
+```bash
+buckthorn scan newtonsoft.json.13.0.4.nupkg
+```
+
+A command, download or inline task code at build is flagged. Analyzers and
+task assemblies are compiled code the build runs, and they are not read, so a
+package that ships them is `not_verified`. On the top 1,000 NuGet packages it
+gave 903 clean, 8 flagged and 89 not_verified, most of those analyzers
+([eval/nuget-noise/NOTE.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/nuget-noise/NOTE.md)).
+It has not been tested on malicious NuGet packages yet. `check` does not read
+`packages.lock.json` yet. The rules are the `BKT-NUGET-*` ones in
+[docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md#nuget).
 
 ### Model repos with remote code
 

@@ -25,7 +25,7 @@ from pathlib import Path
 from buckthorn import hf, lock, mcp_config
 from buckthorn.env import scan_env
 from buckthorn.findings import COVERAGE_RULE_IDS, Finding, Result, Severity, new_findings
-from buckthorn.scan import ARTIFACT_SUFFIXES, CALL_TIME, scan_artifact, split_artifact_name
+from buckthorn.scan import CALL_TIME, SCAN_SUFFIXES, scan_artifact, split_artifact_name
 
 _SEVERITY_ORDER = list(Severity)
 
@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
         help="scan wheels, sdists and npm tarballs, folders of them, or a model folder's code",
     )
     scan.add_argument(
-        "target", type=Path, nargs="+", help="a .whl, .tar.gz, .tgz or .zip, or a folder"
+        "target", type=Path, nargs="+", help="a .whl, .tar.gz, .tgz, .zip or .nupkg, or a folder"
     )
     _add_report_arguments(scan)
     check = sub.add_parser(
@@ -258,7 +258,7 @@ def _package_of(result: Result) -> tuple[str, str]:
         package, _, release = result.path.partition("==")
     elif result.path.startswith("@") and result.path.endswith(".tgz"):
         package, release = split_artifact_name(result.path)  # @scope/name-1.0.0.tgz from a lock
-    elif result.path.lower().endswith(ARTIFACT_SUFFIXES):
+    elif result.path.lower().endswith(SCAN_SUFFIXES):
         package, release = split_artifact_name(Path(result.path).name)
     elif "@" in result.path:  # a Hub repo at a commit: org/name@sha
         package, _, release = result.path.partition("@")
@@ -330,9 +330,12 @@ def _apply_allowlist(results: list[Result], entries: list[dict[str, str]]) -> No
 
 
 def _same_package(entry: str, package: str, path: str) -> bool:
-    """PyPI folds -_. and case together; npm names are taken as written."""
+    """PyPI folds -_. and case together; npm names are taken as written; NuGet
+    ids fold case only."""
     if path.lower().endswith(".tgz"):
         return entry == package
+    if path.lower().endswith(".nupkg"):
+        return entry.lower() == package.lower()
     return re.sub(r"[-_.]+", "-", entry).lower() == re.sub(r"[-_.]+", "-", package).lower()
 
 
@@ -442,7 +445,7 @@ def artifacts(targets: list[Path]) -> list[Path]:
             found = sorted(
                 p
                 for p in target.iterdir()
-                if p.is_file() and p.name.lower().endswith(ARTIFACT_SUFFIXES)
+                if p.is_file() and p.name.lower().endswith(SCAN_SUFFIXES)
             )
             if not found and hf.is_model_folder(target):
                 paths.append(target)  # a model repo: its remote code is read
