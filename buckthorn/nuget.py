@@ -16,6 +16,7 @@ import fnmatch
 import posixpath
 import re
 import xml.etree.ElementTree as ET  # noqa: S405 - a DOCTYPE is refused before parsing (_xml)
+from collections.abc import Container
 from urllib.parse import unquote
 
 from buckthorn.code import FETCHING_COMMAND, channels_in
@@ -255,12 +256,18 @@ def _channels(strings: list[str], path: str) -> list[Finding]:
     ]
 
 
-def _strings(root: ET.Element) -> list[str]:
-    """Every text and attribute value in an XML tree."""
+def _strings(root: ET.Element, skip: Container[ET.Element] = ()) -> list[str]:
+    """Every text and attribute value in an XML tree, but those of the
+    elements in skip."""
     strings = []
     for element in root.iter():
-        strings += [element.text or "", element.tail or "", *element.attrib.values()]
+        if element not in skip:
+            strings += [element.text or "", element.tail or "", *element.attrib.values()]
     return [s for s in strings if s.strip()]
+
+
+# Tasks whose text a build only shows: it never reaches a command.
+_SHOWN = frozenset({"error", "warning", "message"})
 
 
 def _check_scripts(files: Files) -> list[Finding]:
@@ -348,16 +355,24 @@ def _msbuild(
     imports: list[str] = []
     folder = posixpath.dirname(key)
     parents = {child: parent for parent in root.iter() for child in parent}
+    # An Error, Warning or Message task in a target; a property or item of
+    # that name can still reach a command.
+    shown_tasks = {
+        e
+        for e in root.iter()
+        if _group(e, parents) == "target" and _local(e.tag).rpartition(".")[2] in _SHOWN
+    }
+    reach_commands = _strings(root, shown_tasks)
 
     def run(what: str, command: str) -> None:
         """BUILD-001 for a command; BUILD-002 when it, or (built from
-        properties or items) anything in the file, fetches."""
+        properties or items) anything in the file but shown text, fetches."""
         shown = " ".join(command.split())[:100]
         message = f"{what} at build ({shown})"
         findings.append(Finding("BKT-NUGET-BUILD-001", message, Severity.MEDIUM, path))
         fetched = _fetches(command)
         if not fetched and re.search(r"[$@%]\(", command):
-            fetched = next((f for f in map(_fetches, strings) if f), "")
+            fetched = next((f for f in map(_fetches, reach_commands) if f), "")
         if fetched:
             message = f"{what} at build that fetches ({fetched})"
             findings.append(Finding("BKT-NUGET-BUILD-002", message, Severity.HIGH, path))
