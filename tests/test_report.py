@@ -159,6 +159,8 @@ def test_precommit_hook_files_pattern_matches_what_check_reads():
         "sub/uv.lock",
         "package-lock.json",
         "web/npm-shrinkwrap.json",
+        "src/App/packages.lock.json",
+        "packages.config",
     ]:
         assert re.search(pattern, name), name
     for name in [
@@ -168,6 +170,8 @@ def test_precommit_hook_files_pattern_matches_what_check_reads():
         "uv.lock.orig",
         "package.json",
         "yarn.lock",
+        "packages.config.bak",
+        "App.csproj",
     ]:
         assert not re.search(pattern, name), name
 

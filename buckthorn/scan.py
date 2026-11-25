@@ -28,7 +28,7 @@ from keyword import iskeyword
 from pathlib import Path
 from typing import IO
 
-from buckthorn import npm
+from buckthorn import npm, nuget
 from buckthorn.code import (
     _LEGACY_COMMANDS,
     Hit,
@@ -63,9 +63,11 @@ def _is_python(name: str, data: bytes) -> bool:
     return name.endswith(".py") or (data[:2] == b"#!" and b"python" in data.split(b"\n", 1)[0])
 
 
-_ZIP_SUFFIXES = (".whl", ".zip")
+_ZIP_SUFFIXES = (".whl", ".zip", ".nupkg")
 _TAR_SUFFIXES = (".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".tar")
-ARTIFACT_SUFFIXES = _ZIP_SUFFIXES + _TAR_SUFFIXES
+# Python and npm files: what a lockfile or an index may name.
+ARTIFACT_SUFFIXES = (".whl", ".zip") + _TAR_SUFFIXES
+SCAN_SUFFIXES = ARTIFACT_SUFFIXES + (".nupkg",)  # what `scan` reads
 
 
 def read_archive(path: Path) -> tuple[list[tuple[str, bytes]], list[Finding]]:
@@ -609,11 +611,16 @@ def _check_integrity(filename: str, members: list[tuple[str, bytes]]) -> list[Fi
 
 
 def scan_artifact(path: Path) -> list[Finding]:
-    """A wheel by its name; a tar is an npm tarball or an sdist by what it holds."""
+    """A wheel or a NuGet package by its name; a tar is an npm tarball or an
+    sdist by what it holds."""
     if path.name.lower().endswith(".whl"):
         return scan_wheel(path)
     members, findings = read_archive(path)
     name = path.name.lower()
+    if name.endswith(".nupkg"):
+        if any(f.rule_id == "BKT-SKIP-001" for f in findings):
+            return findings  # did not open
+        return nuget.scan_nuget(path.name[: -len(".nupkg")], members, findings)
     shape = npm.shape(members, name.endswith(".tgz")) if name.endswith(_TAR_SUFFIXES) else "sdist"
     if shape == "sdist":
         return scan_sdist(path, (members, findings))
@@ -650,6 +657,11 @@ def split_artifact_name(filename: str) -> tuple[str, str]:
     if filename.lower().endswith(".whl"):
         tags = filename[:-4].split("-")
         return (tags[0], tags[1]) if len(tags) >= 5 else ("", "")
+    if filename.lower().endswith(".nupkg"):
+        # id.version: the id can hold dots, so split before the first version that fits.
+        version = r"\d+(?:\.\d+)+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?"
+        nuget_split = re.fullmatch(rf"(.+?)\.({version})", filename[: -len(".nupkg")])
+        return (nuget_split[1], nuget_split[2]) if nuget_split else ("", "")
     stem = _sdist_stem(filename)
     # An npm version can hold a dash (1.3.0-beta.1), so split before the last
     # semver that fits: a package named lodash-4.17.21 is not lodash.

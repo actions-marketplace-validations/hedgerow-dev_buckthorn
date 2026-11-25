@@ -2,9 +2,10 @@
 
 Network goes only to pypi.org (the JSON API, to find the file a pinned hash
 belongs to when the lockfile does not give its URL), files.pythonhosted.org
-(the file itself) and, for package-lock.json, registry.npmjs.org, over https,
-with redirects elsewhere refused. Nothing is read until its hash matches the
-lockfile.
+(the file itself), for package-lock.json registry.npmjs.org, and for
+packages.lock.json and packages.config api.nuget.org, over https, with
+redirects elsewhere refused. Nothing is read until its hash matches the
+lockfile, except from packages.config, which pins no hash.
 """
 
 from __future__ import annotations
@@ -13,10 +14,12 @@ import base64
 import binascii
 import functools
 import hashlib
+import io
 import json
 import os
 import platform
 import re
+import struct
 import sys
 import tarfile
 import tempfile
@@ -24,6 +27,7 @@ import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -31,6 +35,7 @@ from pathlib import Path
 from packaging.tags import Tag, sys_tags
 from packaging.utils import InvalidWheelFilename, parse_wheel_filename
 
+from buckthorn import nuget
 from buckthorn.findings import Finding, Result, Severity
 from buckthorn.scan import ARTIFACT_SUFFIXES, MAX_TOTAL_BYTES, scan_artifact
 
@@ -39,6 +44,11 @@ MAX_INDEX_BYTES = 16 * 1024 * 1024
 _ALLOWED_HOSTS = frozenset({"pypi.org", "files.pythonhosted.org"})
 _NPM_HOSTS = frozenset({"registry.npmjs.org"})
 NPM_LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json")
+_NUGET_HOSTS = frozenset({"api.nuget.org"})
+NUGET_LOCKFILES = ("packages.lock.json", "packages.config")
+_NUGET_FLAT = "https://api.nuget.org/v3-flatcontainer"
+_NUGET_ID = re.compile(r"^[A-Za-z0-9_]+(?:[.-][A-Za-z0-9_]+)*$")
+_NUGET_VERSION = re.compile(r"^(\d+(?:\.\d+){0,3})(-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
 _PYPI_REGISTRY = "https://pypi.org/simple"
 # Artifact file names are used as the last part of a cache path, so they must be plain.
 _SAFE_FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]*$")
@@ -83,8 +93,8 @@ def parse(path: Path) -> list[Pin]:
     if path.suffix in (".txt", ".in") or path.name.startswith("requirements"):
         return _parse_requirements(text)
     raise ValueError(
-        f"{path.name}: not a requirements file, uv.lock, poetry.lock, package-lock.json "
-        "or MCP config"
+        f"{path.name}: not a requirements file, uv.lock, poetry.lock, package-lock.json, "
+        "packages.lock.json, packages.config or MCP config"
     )
 
 
@@ -170,6 +180,8 @@ def check(
     fetch = fetch or fetch_url
     if path.name in NPM_LOCKFILES:
         return _check_npm(path, fetch, cache_dir, progress or (lambda _: None), all_files)
+    if path.name in NUGET_LOCKFILES:
+        return _check_nuget(path, fetch, cache_dir, progress or (lambda _: None))
     pins = parse(path)
     results: list[Result] = []
     with tempfile.TemporaryDirectory(prefix="buckthorn-") as tmp:
@@ -302,32 +314,51 @@ def _fetch_and_scan(
     algorithm: str = "sha256",
     label: str | None = None,
 ) -> Result:
-    """sha is the pinned hex digest in algorithm. The Result is named label (else
-    filename) and carries the file's sha256, whatever the lockfile pinned."""
+    """sha is the pinned hex digest in algorithm ("nuget" is NuGet's content hash).
+    The Result is named label (else filename) and carries the file's sha256,
+    whatever the lockfile pinned."""
     label = label or filename
     # The cache is keyed by the pinned hash and re-checked on every read, so a
     # tampered entry is fetched again rather than trusted.
     target = cache / sha / filename
     cached = target.is_file() and not target.is_symlink()
-    if not (cached and hashlib.new(algorithm, target.read_bytes()).hexdigest() == sha):
+    if not (cached and _digest(algorithm, target.read_bytes()) == sha):
         try:
             data = fetch(url, MAX_DOWNLOAD_BYTES)
         except FetchError as exc:
             return _gap(label, sha if algorithm == "sha256" else "", f"could not fetch: {exc}")
-        actual = hashlib.new(algorithm, data).hexdigest()
+        actual = _digest(algorithm, data)
+        if not actual:
+            message = "not a package NuGet would read, so its content hash is unknown"
+            return _gap(label, hashlib.sha256(data).hexdigest(), message)
         if actual != sha:
-            message = f"downloaded file's {algorithm} is {actual}, the lockfile pins {sha}"
+            kind = "NuGet content hash" if algorithm == "nuget" else algorithm
+            message = f"downloaded file's {kind} is {actual}, the lockfile pins {sha}"
             finding = Finding("BKT-LOCK-001", message, Severity.HIGH, url)
             return Result(label, hashlib.sha256(data).hexdigest(), [finding])
-        target.parent.mkdir(parents=True, exist_ok=True)
-        # Write beside it and rename over it: a link planted at target is replaced,
-        # never written through.
-        partial = target.with_name(f".{filename}.partial")
-        partial.unlink(missing_ok=True)
-        partial.write_bytes(data)
-        os.replace(partial, target)
+        _store(target, data)
     data_sha256 = sha if algorithm == "sha256" else hashlib.sha256(target.read_bytes()).hexdigest()
     return Result(label, data_sha256, scan_artifact(target))
+
+
+def _store(target: Path, data: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # Write beside it and rename over it: a link planted at target is replaced,
+    # never written through.
+    partial = target.with_name(f".{target.name}.partial")
+    partial.unlink(missing_ok=True)
+    partial.write_bytes(data)
+    os.replace(partial, target)
+
+
+def _digest(algorithm: str, data: bytes) -> str:
+    """Hex digest; for "nuget", NuGet's content hash, or "" if NuGet would refuse the file."""
+    if algorithm != "nuget":
+        return hashlib.new(algorithm, data).hexdigest()
+    try:
+        return nuget_content_hash(data)
+    except ValueError:
+        return ""
 
 
 def _check_npm(
@@ -460,12 +491,17 @@ def _sha512_of(value: object) -> str:
     for part in str(value or "").split():
         algorithm, _, digest = part.partition("-")
         if algorithm == "sha512":
-            try:
-                raw = base64.b64decode(digest, validate=True)
-            except (binascii.Error, ValueError):
-                return ""
-            return raw.hex() if len(raw) == 64 else ""
+            return _sha512_hex(digest)
     return ""
+
+
+def _sha512_hex(value: object) -> str:
+    """Hex from a base64 sha512 digest; "" if it is not one."""
+    try:
+        raw = base64.b64decode(str(value or ""), validate=True)
+    except (binascii.Error, ValueError):
+        return ""
+    return raw.hex() if len(raw) == 64 else ""
 
 
 def _npm_platform() -> tuple[str | None, str | None]:
@@ -504,6 +540,207 @@ def _npm_allows(values: object, here: str | None) -> bool:
     return not wanted or here in wanted
 
 
+NuGetPin = tuple[str, str, str | None]  # (id, version, hex content hash or None if not pinned)
+
+
+def _check_nuget(
+    path: Path, fetch: Fetch, cache_dir: Path | None, progress: Callable[[str], None]
+) -> list[Result]:
+    """packages.lock.json or packages.config. Each package is fetched from nuget.org.
+
+    A lockfile entry is checked against its contentHash before it is read. Neither
+    file says which feed a package came from, so nuget.org is assumed. A
+    packages.config entry pins no hash: what nuget.org serves now is scanned.
+    """
+    data = path.read_bytes()
+    if path.name == "packages.lock.json":
+        pins, results = _nuget_lock_pins(data)
+    else:
+        pins, results = _packages_config_pins(data)
+    seen: set[tuple[str, str, str | None]] = set()  # ids and versions in any case
+    with tempfile.TemporaryDirectory(prefix="buckthorn-") as tmp:
+        cache = cache_dir or Path(tmp)
+        for package_id, version, sha512 in pins:
+            key = (package_id.lower(), (_nuget_version(version) or version).lower(), sha512)
+            if key in seen:
+                continue  # the same package in another target framework
+            seen.add(key)
+            normalized = _nuget_version(version)
+            # fullmatch: $ in a pattern also matches before a final newline.
+            if not (_NUGET_ID.fullmatch(package_id) and len(package_id) <= 100 and normalized):
+                label = f"{package_id[:100]} {version[:64]}"
+                results.append(_gap(label, "", "not a plain NuGet id and exact version"))
+                continue
+            label = f"{package_id}.{normalized}.nupkg"
+            if sha512 == "":
+                message = "no sha512 contentHash, so the package cannot be checked"
+                results.append(_gap(label, "", message))
+                continue
+            filename = label.lower()
+            url = f"{_NUGET_FLAT}/{package_id.lower()}/{normalized.lower()}/{filename}"
+            progress(label)
+            if sha512 is not None:
+                results.append(_fetch_and_scan(filename, sha512, url, fetch, cache, "nuget", label))
+                continue
+            try:
+                body = fetch(url, MAX_DOWNLOAD_BYTES)
+            except FetchError as exc:
+                results.append(_gap(label, "", f"could not fetch: {exc}"))
+                continue
+            sha256 = hashlib.sha256(body).hexdigest()
+            target = cache / sha256 / filename
+            _store(target, body)
+            message = "packages.config pins no hash: this is what nuget.org serves now"
+            note = Finding("BKT-LOCK-004", message, Severity.INFO, url)
+            results.append(Result(label, sha256, [*scan_artifact(target), note]))
+    return results
+
+
+def _nuget_lock_pins(data: bytes) -> tuple[list[NuGetPin], list[Result]]:
+    """Every package of every target in a packages.lock.json, version 1, 2 or 3.
+    Local project references (type Project) are left out: they are not fetched."""
+    try:
+        lockfile = json.loads(data)
+    except RecursionError:
+        raise ValueError("JSON nested too deeply to parse") from None
+    version = lockfile.get("version") if isinstance(lockfile, dict) else None
+    targets: object = None
+    if type(version) is int and version in (1, 2):
+        targets = lockfile.get("dependencies")
+    elif type(version) is int and version == 3:
+        targets = {
+            k: v.get("dependencies") if isinstance(v, dict) else v
+            for k, v in lockfile.items()
+            if k != "version"
+        }
+    if not isinstance(targets, dict):
+        message = f"not a packages.lock.json of version 1, 2 or 3 (version {version!r})"
+        return [], [_gap("packages.lock.json", "", message)]
+    pins: list[NuGetPin] = []
+    results: list[Result] = []
+    for target, packages in targets.items():
+        if not isinstance(packages, dict):
+            results.append(_gap(f"packages.lock.json {target}", "", "target is not a map"))
+            continue
+        for package_id, entry in packages.items():
+            if not isinstance(entry, dict):
+                results.append(_gap(str(package_id)[:100], "", "lockfile entry is not a map"))
+            elif entry.get("type") != "Project":
+                resolved = entry.get("resolved")
+                version_text = resolved if isinstance(resolved, str) else ""
+                pins.append((package_id, version_text, _sha512_hex(entry.get("contentHash"))))
+    return pins, results
+
+
+def _packages_config_pins(data: bytes) -> tuple[list[NuGetPin], list[Result]]:
+    """Every <package id version> in a packages.config. It pins no hashes."""
+    root, problem = nuget._xml(data, "packages.config")
+    if root is not None and root.tag != "packages":
+        root, problem = None, "packages.config has no <packages> root"
+    if root is None:
+        return [], [_gap("packages.config", "", problem)]
+    pins: list[NuGetPin] = [
+        (element.get("id", ""), element.get("version", ""), None)
+        for element in root
+        if element.tag == "package"
+    ]
+    return pins, []
+
+
+def _nuget_version(version: str) -> str | None:
+    """The version as NuGet names the file: build metadata dropped, three numbers
+    without leading zeros, a fourth only if it is not 0. None if not exact."""
+    match = _NUGET_VERSION.fullmatch(version) if len(version) <= 64 else None
+    if not match:
+        return None
+    numbers = [str(int(n)) for n in match[1].split(".")]
+    numbers += ["0"] * (3 - len(numbers))
+    if len(numbers) == 4 and numbers[3] == "0":
+        numbers.pop()
+    return ".".join(numbers) + (match[2] or "")
+
+
+_SIGNATURE_NAME = b".signature.p7s"
+_CENTRAL_HEADER = struct.Struct("<IHHHHHHIIIHHHHHII")  # 46 bytes, as the zip spec lays it out
+_END_RECORD = struct.Struct("<IHHHHIIH")  # 22 bytes
+
+
+def nuget_content_hash(data: bytes) -> str:
+    """NuGet's contentHash of a .nupkg, as hex: the sha512 of the file, or for a
+    signed package the sha512 of the zip as it was before the signature was
+    added. Ported from NuGet.Client's SignedPackageArchiveUtility.GetPackageContentHash.
+    ValueError for a file NuGet would refuse.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            signed = _SIGNATURE_NAME.decode() in zf.namelist()
+    # NotImplementedError: zipfile on some corrupt headers.
+    except (zipfile.BadZipFile, OSError, EOFError, NotImplementedError) as exc:
+        raise ValueError(f"not a zip: {exc}") from exc
+    if not signed:
+        return hashlib.sha512(data).hexdigest()
+    # The end of central directory record: the last signature in the final 64 KB.
+    found = data.rfind(b"PK\x05\x06", max(0, len(data) - 22 - 0xFFFF), len(data) - 18)
+    if found < 0:
+        raise ValueError("no end of central directory record")
+    _, _, _, on_disk, total, cd_size, cd_offset, _ = _END_RECORD.unpack_from(data, found)
+    if 0xFFFF in (on_disk, total) or 0xFFFFFFFF in (cd_size, cd_offset):
+        raise ValueError("a zip64 package, which NuGet does not sign")
+    # Each central directory record: [position, local header offset, record size, entry size].
+    records: list[list[int]] = []
+    signature = -1
+    position = cd_offset
+    while data[position : position + 4] == b"PK\x01\x02":
+        if position + 46 > len(data):
+            raise ValueError("central directory runs past the end of the file")
+        fields = _CENTRAL_HEADER.unpack_from(data, position)
+        flags, name_len, extra_len, comment_len, local = fields[3], *fields[10:13], fields[16]
+        name = data[position + 46 : position + 46 + name_len]
+        if name == _SIGNATURE_NAME and not flags & 0x800:
+            if signature >= 0:
+                raise ValueError("more than one package signature file")
+            signature = len(records)
+        size = 46 + name_len + extra_len + comment_len
+        records.append([position, local, size, 0])
+        position += size
+    if not records or signature < 0:
+        raise ValueError("no package signature file in the central directory")
+    start_of_entries = min(min(r[1] for r in records), len(data))
+    end_of_entries = min(r[0] for r in records)
+    by_offset = sorted(records, key=lambda r: r[1])
+    for current, following in zip(by_offset, by_offset[1:] + [None], strict=True):
+        current[3] = (following[1] if following else end_of_entries) - current[1]
+    end_of_directory = records[-1][0] + records[-1][2]
+    signature_record = records[signature]
+    kept = [r for r in by_offset if r is not signature_record]
+
+    digest = hashlib.sha512(data[:start_of_entries])
+    for _, local, _, entry_size in kept:
+        digest.update(data[local : local + entry_size])
+    # Where each entry moves to once the signature entry is gone.
+    shift: dict[int, int] = {}
+    previous_end = 0
+    for record in kept:
+        shift[id(record)] = previous_end - record[1]
+        previous_end = record[1] + record[3] + shift[id(record)]
+    for record in sorted(kept, key=lambda r: r[0]):
+        start, size = record[0], record[2]
+        digest.update(data[start : start + 42])
+        local = struct.unpack_from("<I", data, start + 42)[0]
+        digest.update(struct.pack("<I", (local + shift[id(record)]) & 0xFFFFFFFF))
+        digest.update(data[start + 46 : start + size])
+    end = end_of_directory
+    if data[end : end + 4] != b"PK\x05\x06" or end + 22 > len(data):
+        raise ValueError("central directory is not followed by its end record")
+    on_disk, total, cd_size, cd_offset = struct.unpack_from("<HHII", data, end + 8)
+    digest.update(data[end : end + 8])
+    digest.update(struct.pack("<HH", (on_disk - 1) & 0xFFFF, (total - 1) & 0xFFFF))
+    digest.update(struct.pack("<I", (cd_size - signature_record[2]) & 0xFFFFFFFF))
+    digest.update(struct.pack("<I", (cd_offset - signature_record[3]) & 0xFFFFFFFF))
+    digest.update(data[end + 20 :])
+    return digest.hexdigest()
+
+
 def _gap(path: str, sha: str, message: str) -> Result:
     return Result(path, sha, [Finding("BKT-LOCK-002", message, Severity.INFO, path)])
 
@@ -523,15 +760,16 @@ def allowed_url(url: str | None, hosts: frozenset[str] = _ALLOWED_HOSTS) -> bool
 
 class _PyPIOnlyRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
-        if not allowed_url(newurl, _ALLOWED_HOSTS | _NPM_HOSTS):
+        if not allowed_url(newurl, _ALLOWED_HOSTS | _NPM_HOSTS | _NUGET_HOSTS):
             raise FetchError(f"redirect to {newurl} refused")
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def fetch_url(url: str, max_bytes: int) -> bytes:
-    """GET an https URL on PyPI or the npm registry, up to max_bytes. FetchError otherwise."""
-    if not allowed_url(url, _ALLOWED_HOSTS | _NPM_HOSTS):
-        raise FetchError(f"{url} is not on PyPI or the npm registry")
+    """GET an https URL on PyPI, the npm registry or nuget.org, up to max_bytes.
+    FetchError otherwise."""
+    if not allowed_url(url, _ALLOWED_HOSTS | _NPM_HOSTS | _NUGET_HOSTS):
+        raise FetchError(f"{url} is not on PyPI, the npm registry or nuget.org")
     opener = urllib.request.build_opener(_PyPIOnlyRedirects)
     # S310: https and the host were checked above, and redirects are checked too.
     request = urllib.request.Request(url, headers={"User-Agent": "buckthorn"})  # noqa: S310

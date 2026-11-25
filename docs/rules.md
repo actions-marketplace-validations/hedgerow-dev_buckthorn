@@ -1,8 +1,9 @@
 # Rules
 
 Every finding has a rule id. Ids are public and stable within a major version.
-npm rules use `BKT-NPM-*` (see npm, at the end); ids that mean the same thing
-in both ecosystems (`BKT-SKIP-*`, `BKT-LOCK-*`, `BKT-EXFIL-*`) are shared.
+npm rules use `BKT-NPM-*` (see npm) and NuGet rules `BKT-NUGET-*` (see
+NuGet); ids that mean the same thing in each ecosystem (`BKT-SKIP-*`,
+`BKT-LOCK-*`, `BKT-EXFIL-*`) are shared.
 
 Severity sets the verdict: anything above `info` makes an artifact `flagged`.
 `info` notes are context: shown in JSON, hidden in text output, never a
@@ -15,7 +16,7 @@ read, and make the verdict `not_verified`, never `clean`.
 |---|---|
 | BKT-SKIP-001 | The archive would not open, or the file name is not a wheel or sdist, or a tar holds an npm `package.json` but npm and pip would read it differently, so it is read both ways (see npm), or an sdist member's name holds a backslash (a folder separator on Windows only, so where it unpacks depends on the system), or two sdist members unpack to the same file, or an sdist's `setup.py`, `setup.cfg` or `pyproject.toml` is named in another case (`Setup.py`) or ends in a dot or space, which macOS or Windows read as the real one. |
 | BKT-SKIP-002 | An archive limit was hit (member count, member size, total size). What was read is still checked. |
-| BKT-SKIP-003 | A metadata or Python file could not be parsed, or was too large to parse, or a package's modules call each other too much to follow every call (see Code that runs at import). In an npm tarball, also: JavaScript that runs on its own and cannot be read (see npm). |
+| BKT-SKIP-003 | A metadata or Python file could not be parsed, or was too large to parse, or a package's modules call each other too much to follow every call (see Code that runs at import). In an npm tarball, also: JavaScript that runs on its own and cannot be read (see npm). In a NuGet package, also: a `.nuspec` or MSBuild file that cannot be read, an import that cannot be followed, a task assembly or an analyzer (see NuGet). |
 | BKT-SKIP-004 | A link inside an archive or an environment. Links are never followed. |
 | BKT-SKIP-005 | An installed distribution has no RECORD, or one that cannot be read, so its files are unknown. |
 | BKT-LOCK-002 | A pinned artifact could not be checked (see Lockfiles below). |
@@ -379,11 +380,29 @@ so by default only the file this machine would install is checked for each
 package (the best-matching wheel, else the sdist). `--all-files` checks every
 pinned file.
 
+For NuGet (preview), `packages.lock.json` (version 1, 2 or 3) and
+`packages.config` are read. Neither says which feed a package came from, so
+every package is fetched from nuget.org (`api.nuget.org`, by its lower-case id
+and NuGet's normalized version). A package from a private feed is then either
+not found there (`BKT-LOCK-002`) or, if nuget.org has another package by that
+name, a hash mismatch (`BKT-LOCK-001`). Project references (`"type":
+"Project"`) are local and not fetched. A package in several target
+frameworks is fetched once.
+
+A `packages.lock.json` entry is checked against its `contentHash` before it
+is read. For a signed package (one with `.signature.p7s`, which nuget.org adds
+when it signs a package) NuGet hashes the zip as it was before signing, with the
+signature entry cut out and the zip's offsets moved back, and so does
+Buckthorn. A signed package NuGet would refuse (two signature entries, a
+zip64 package) is a `BKT-LOCK-002`. `packages.config` pins no hash, so what
+nuget.org serves now is scanned, with a `BKT-LOCK-004` note.
+
 | Rule | Severity | Meaning |
 |---|---|---|
-| BKT-LOCK-001 | high | The downloaded file's hash (sha256, or sha512 for npm) is not the one the lockfile pins. The file is not scanned. |
-| BKT-LOCK-002 | info (coverage) | A pin could not be checked: not pinned with `==` and a hash, from another index or a git or local source, not found on PyPI, not fetched, or a file name that is not a plain wheel or sdist name. For npm: a `resolved` URL off registry.npmjs.org (git, local, another registry), no sha512 `integrity`, or a lockfile version 1. |
+| BKT-LOCK-001 | high | The downloaded file's hash (sha256, or sha512 for npm, or NuGet's content hash) is not the one the lockfile pins. The file is not scanned. |
+| BKT-LOCK-002 | info (coverage) | A pin could not be checked: not pinned with `==` and a hash, from another index or a git or local source, not found on PyPI, not fetched, or a file name that is not a plain wheel or sdist name. For npm: a `resolved` URL off registry.npmjs.org (git, local, another registry), no sha512 `integrity`, or a lockfile version 1. For NuGet: no sha512 `contentHash`, an id or version that is not plain and exact, not found on nuget.org, a signed package NuGet would refuse, or a file that is not a `packages.lock.json` of version 1 to 3 or a `packages.config` that parses. |
 | BKT-LOCK-003 | info | No file of a pin installs on this machine (a Windows-only wheel on macOS, or an npm package for another `os` or `cpu`), so none was checked. `--all-files` checks them all. |
+| BKT-LOCK-004 | info | A `packages.config` package: nothing pins its bytes, so what nuget.org serves now was scanned. |
 
 ## MCP configs
 
@@ -535,8 +554,14 @@ its own, so the package is `not_verified`:
   `process.dlopen` called at load.
 - An install script builds a `binding.gyp` the package ships (`node-gyp`,
   `node-gyp-build`, `prebuild-install` or `node-pre-gyp` in the command, or
-  npm's implicit `node-gyp rebuild`): gyp can run commands (`<!(cmd)`), and
-  the code it compiles runs native.
+  npm's implicit `node-gyp rebuild`): the code it compiles runs native.
+  The commands gyp runs are read (below). For an install script, a
+  `binding.gyp` in any folder counts, since the script can point node-gyp
+  there (`-C sub`, `cd sub`); npm's implicit build looks only in the top
+  folder. The name matches in any case (`Binding.gyp`), as on a
+  case-insensitive disk.
+- A gyp command built from gyp variables (`<!(node <(x)/a.js)`): what it
+  runs is not followed.
 - An install script runs a file that is not JavaScript (`sh install.sh`, a
   binary), a command line that does not parse, or scripts that run each
   other (`npm run`) more than 32 deep.
@@ -569,8 +594,8 @@ CI still runs them, and approving one is the decision these findings are for.
 
 | Rule | Severity | Meaning |
 |---|---|---|
-| BKT-NPM-SCRIPT-001 | medium | `package.json` has a `preinstall`, `install` or `postinstall` script, which npm runs at install. An empty script runs nothing. Info when the script is only a native build (`node-gyp rebuild`, `node-gyp-build`, `node-gyp-build-optional-packages`, `prebuild-install`, with flags, a flag taking at most one plain word such as `-r napi`, and `\|\|` between them) and the package does not ship that tool itself (a `bin` of that name, or anything under `node_modules/`), or when a `binding.gyp` with no `install` or `preinstall` script makes npm run `node-gyp rebuild` (unless `gypfile` is `false`). Info for `prepare` too: npm runs it for a git dependency or a local install, never for a registry tarball. |
-| BKT-NPM-INSTALL-001 | high | A `preinstall`, `install` or `postinstall` command fetches: it holds `curl`, `wget`, PowerShell download commands or a URL (as for `BKT-INSTALL-001`), itself or in a script it runs with `npm run`. Or the JavaScript it runs uses the network (below). |
+| BKT-NPM-SCRIPT-001 | medium | `package.json` has a `preinstall`, `install` or `postinstall` script, which npm runs at install. An empty script runs nothing. Info when the script is only a native build (`node-gyp rebuild`, `node-gyp-build`, `node-gyp-build-optional-packages`, `prebuild-install`, with flags, a flag taking at most one plain word such as `-r napi`, and `\|\|` between them) and the package does not ship that tool itself (a `bin` of that name, or anything under `node_modules/`), or when a `binding.gyp` with no `install` or `preinstall` script makes npm run `node-gyp rebuild` (unless `gypfile` is `false`). Info for `prepare` too: npm runs it for a git dependency or a local install, never for a registry tarball. Medium too, on the gyp file, when a `.gyp` or `.gypi` file runs a file of the package (below). |
+| BKT-NPM-INSTALL-001 | high | A `preinstall`, `install` or `postinstall` command, or a gyp command (below), fetches: it holds `curl`, `wget`, PowerShell download commands or a URL (as for `BKT-INSTALL-001`), itself or in a script it runs with `npm run`. Or the JavaScript it runs uses the network (below). |
 | BKT-NPM-BIN-001 | high | A `bin` command (or a file under `directories.bin`) named `node`, `npm`, `npx`, `git`, `ssh` or `sh`, in any case and after npm keeps only the base name, unless the package is that tool (`npm` also ships `npx`). A string `bin` is named after the package. |
 | BKT-NPM-META-001 | medium | `package.json` is missing or unreadable, or its `name` and `version` do not give the file name. The registry names `@scope/pkg` 1.0.0 `pkg-1.0.0.tgz` and `npm pack` names it `scope-pkg-1.0.0.tgz`; both match. |
 
@@ -605,6 +630,19 @@ backquotes, and each is read for the JavaScript it runs:
 
 A file the script names that the package does not ship runs nothing. Other
 commands (`node-gyp`, a dependency's bin) are not this package's code.
+
+gyp runs a command when it reads a `.gyp` or `.gypi` file: `<!(cmd)`,
+`<!@(cmd)`, `<@!(cmd)` and the late `>!` and `^!` forms. When an install
+script or npm builds the package's `binding.gyp` (as above), every such file
+the package ships (in any case) is read, and each command is read as an install script run
+from that file's folder. gyp's own files that nothing builds at install
+(`node-gyp`, `npm`) are not read. One that runs a file of the
+package is `BKT-NPM-SCRIPT-001` (medium), and the file is read as install
+code. The usual commands that print a path (`node -p
+"require('node-addon-api').include"`, `node -e "require('nan')"`,
+`pkg-config`) run no file of the package. Gyp files by other names (an
+`includes` entry such as `config.json`) are not read; the native build's
+`BKT-SKIP-003` still stands for them.
 
 The whole file counts, functions too, as for `setup.py`. So does every local
 file it loads (`require`, `import`, `import()`), read like an entry file at
@@ -740,6 +778,123 @@ base64 decoded too, as for Python. The value is never shown. Not read:
 strings joined at run time (`'https://disc' + 'ord.com/...'`, a template
 with `${}` inside the channel), comments, and files the rules above do not
 read (`bin` commands, files nothing loads).
+
+## NuGet
+
+`buckthorn scan` reads a `.nupkg` (a zip) by its name, without unpacking,
+restoring or building anything. Member names are read as NuGet unpacks them
+and Windows names the files: `%2F` and other escapes decoded, `\` as `/`, in
+any case, trailing dots and spaces dropped from each name (`Pkg.targets.` is
+`Pkg.targets`), `name::$DATA` as `name`. Every copy of a name the zip holds
+twice is read.
+
+What is judged: the `.nuspec`, and the code that runs on its own, which is the
+PowerShell scripts Visual Studio runs, the MSBuild files NuGet or MSBuild
+imports into a build, and analyzers (all below). Compiled code is never read.
+`lib/` and `runtimes/` assemblies run only when the app calls them, so they
+are not read and do not block `clean`, like npm `bin` commands. Content files,
+`.pp` source transforms, `.resx` files and `packages.lock.json` are not read.
+
+XML (the `.nuspec` and MSBuild files) is read as .NET reads it: by its byte
+order mark, else in the encoding its declaration names (`utf-7` and
+`windows-1252` too), else as UTF-8. A file not valid in that encoding, in an
+encoding Python does not know, over 5 MB, that does not parse, or that has a
+`DOCTYPE` is not read. A `DOCTYPE` is refused before any XML is parsed, so no
+entity is expanded or fetched.
+
+The `.nuspec` is the one at the top of the package. None, more than one (NuGet
+refuses that), one that is not read (above), or one with no `id` or `version`
+is a `BKT-SKIP-003` and a `BKT-NUGET-META-001`. Every `id` and `version` is
+read, whatever the case of the element: one that names more than one is a
+`BKT-NUGET-META-001`, and each id's MSBuild files are read.
+
+PowerShell: `tools/init.ps1` (run when the solution opens) and
+`tools/install.ps1` and `tools/uninstall.ps1` (run when a `packages.config`
+project adds or removes the package), at the top of `tools/` or one folder
+down (`tools/net45/`). NuGet does not run `install.ps1` or `uninstall.ps1` for
+`PackageReference` projects; Microsoft's docs do not say whether `init.ps1`
+runs there, so it is treated as running. PowerShell is not parsed: `init.ps1`
+is flagged, `install.ps1` and `uninstall.ps1` are a note (in the top 1,000
+packages they were routine setup, `eval/nuget-noise`) unless they run code they
+decode, compile or start (`iex`, `Invoke-Expression`, `FromBase64String`,
+`-EncodedCommand`, `Start-Process`, `Add-Type`), and each script is searched
+as text for download words.
+
+MSBuild files read from the start: `<id>.props` and `<id>.targets` in
+`build/`, `buildTransitive/`, `buildMultiTargeting/` and its old name
+`buildCrossTargeting/`, at the top or one folder down (`build/net8.0/`), the
+id in any case; and `Sdk/Sdk.props` and `Sdk/Sdk.targets`, which MSBuild
+imports when a project names the package as its SDK
+(`<Project Sdk="Pkg/1.0.0">`). Other package files are read when one of these
+leads to them:
+
+- An `Import` (`Project` split on `;`), or a project the `MSBuild` task builds
+  (`Projects`), except the project being built (`$(MSBuildProjectFullPath)`,
+  `$(MSBuildProjectFile)`). A path is from the importing file's folder or from
+  `$(MSBuildThisFileDirectory)`; a wildcard reads every package file that
+  fits, and a folder the MSBuild files in it. An `Import` with an `Sdk`
+  (unless its `Project` uses `$(MSBuildThisFileDirectory)`, `..` or a rooted
+  path), or under one of MSBuild's own folders (`$(MSBuildToolsPath)`,
+  `$(MSBuildBinPath)`, `$(MSBuildExtensionsPath)`,
+  `$(MSBuildFrameworkToolsPath)`, `$(MSBuildSDKsPath)`) with the rest written
+  out plainly (no properties, items, `;` or `..`), is not the package's file.
+  A package that sets one of those properties itself is a `BKT-SKIP-003`. Any other that cannot be followed is
+  a `BKT-SKIP-003`: a path built from other properties, one outside the
+  package, or a package file that is not there.
+- A property or item (`Include`) whose value uses
+  `$(MSBuildThisFileDirectory)` to name a package MSBuild file (`.props`,
+  `.targets`, `.tasks`, or ending `proj`) or a folder of them. This is how
+  `CustomAfterMicrosoftCommonTargets`, `RoslynTargetsPath` or a
+  `ProjectReference` point the build at the package. A value that names
+  nothing in the package is not an import.
+
+Any other MSBuild project in the package (an XML file whose root is
+`Project`, whatever its name) that would run or load code is a
+`BKT-NUGET-BUILD-004` note: a property built from other properties can still
+point a build at it, but such a property in a file read above is already a
+`BKT-SKIP-003`. .NET workload manifests ship these files by the dozen
+(`eval/nuget-noise`).
+
+Properties are judged wherever they are set: in a `PropertyGroup`, by the
+`MSBuild` task or a `ProjectReference` (`Properties`, `AdditionalProperties`),
+or by `CreateProperty`. A task output (`Output PropertyName`) from any other
+task that sets a build event, a tool property (below), one of MSBuild's own
+folders or a property that names an import (`CustomBefore*`, `CustomAfter*`,
+or ending `Targets`, `Props`, `TargetsPath`, `PropsPath`, `TargetsFile` or
+`PropsFile`) is a
+`BKT-SKIP-003`, as is one that adds an `Analyzer` item. An SDK other than the
+.NET SDK's own (`Microsoft.NET.Sdk` and `Microsoft.NET.Sdk.*`), named by
+`<Project Sdk>`, `<Import Sdk>` or `<Sdk>`, is a `BKT-SKIP-003`: MSBuild can
+fetch it from NuGet and import it.
+
+In the files read, every task counts, whatever its `Condition` and whether or
+not a build reaches its target. A task named in full
+(`Microsoft.Build.Tasks.Exec`) is the same task. Values are read after MSBuild
+decodes their `%XX` escapes (`%24` is `$`). Property functions
+(`$([System.IO.File]::ReadAllText(...))`) are not judged.
+
+Compiled code that runs at build is a `BKT-SKIP-003`, so a package that ships
+it is `not_verified`: a `UsingTask` assembly (`AssemblyFile`) not under one of
+MSBuild's own folders; a program a task attribute (`ToolPath`, `ToolExe`) or a
+property (a name ending `ToolPath`, `ToolExe`, `ToolFullPath`,
+`TasksAssembly` or `TaskAssembly`, or `DotnetHostPath`) points the build at,
+such as `CscToolPath`, which swaps the compiler; an `Analyzer` item; and each
+`.dll` under `analyzers/`. Analyzers and source generators run inside the
+compiler at every build.
+
+| Rule | Severity | Meaning |
+|---|---|---|
+| BKT-NUGET-META-001 | medium | The `.nuspec` cannot be read or names more than one `id` or `version` (above), or its `id` and `version` do not give the file name (`id.version.nupkg`, in any case, the version as written or as NuGet normalizes it: `1.0` is `1.0.0`, no leading zeros, no build metadata). |
+| BKT-NUGET-SCRIPT-001 | medium | The package has an `init.ps1`, which Visual Studio runs on its own (above). Info for `install.ps1` and `uninstall.ps1` unless they run code they decode, compile or start (above). |
+| BKT-NUGET-INSTALL-001 | high | Such a script fetches: it holds `curl`, `wget`, PowerShell download commands or a URL (as for `BKT-INSTALL-001`), or names a .NET network class or call (`WebClient`, `HttpClient`, `WebRequest`, `HttpWebRequest`, `TcpClient`, `UdpClient`, `DownloadString`, `DownloadFile`, `DownloadData`). |
+| BKT-NUGET-BUILD-001 | medium | An MSBuild file read above runs a command at build: an `Exec` task, a `PreBuildEvent` or `PostBuildEvent` property (which `Microsoft.Common.targets` runs with `Exec`), or the `Command` of a C++ `PreBuildEvent`, `PreLinkEvent`, `PostBuildEvent`, `CustomBuildStep` or `CustomBuild`. Or it writes a file a later build, restore or shell runs: `WriteLinesToFile`, `Copy` or `Move` naming a file ending `proj`, `.props`, `.targets`, `.tasks`, `.rsp`, `.ps1`, `.psm1`, `.cmd`, `.bat` or `.sh`, or a `global.json` or `nuget.config` (directly, or, when the name is built from properties, in any property value in the file), or lines holding `<Project`. |
+| BKT-NUGET-BUILD-002 | high | An MSBuild file read above fetches at build: a command or inline task code that fetches (as for `BKT-NUGET-INSTALL-001`), or a `DownloadFile` task. A command built from properties or items (`$(Cmd)`) counts as fetching when any text or attribute value in its file does. |
+| BKT-NUGET-BUILD-003 | medium | An MSBuild file read above runs code it carries: a task built from inline code (a `UsingTask` with a `Task` body, as `RoslynCodeTaskFactory` takes; a `Code Source` file is read as that code, followed as an `Import` is), or an `XslTransformation` with `UseTrustedSettings` not `false`, which lets XSLT run scripts. |
+| BKT-NUGET-BUILD-004 | info | An MSBuild file no import above names would run or load code if a build were pointed at it (above). |
+
+`BKT-EXFIL-001` and `BKT-EXFIL-002` (see Shipped exfiltration channels) are
+read from every text and attribute value in the `.nuspec` and the MSBuild
+files read above, and from the PowerShell scripts above.
 
 ## Hugging Face remote code
 

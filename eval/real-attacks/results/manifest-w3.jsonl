@@ -1,0 +1,283 @@
+{"sample": "046.zip", "fields": ["dependencies", "scripts"], "added": {}, "refs": {"README.md": ["files"], "dist/genie.js": ["bin"]}, "gyp": false, "gyp_expands": false}
+{"sample": "048.zip", "fields": ["dependencies", "scripts"], "added": {}, "refs": {"README.md": ["files"], "dist/genie.js": ["bin"]}, "gyp": false, "gyp_expands": false}
+{"sample": "050.zip", "fields": ["dependencies", "scripts"], "added": {}, "refs": {"README.md": ["files"], "dist/genie.js": ["bin"]}, "gyp": false, "gyp_expands": false}
+{"sample": "060.zip", "fields": [], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "085.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "093.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "099.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "101.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "109.zip", "fields": [], "added": {}, "refs": {"scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "110.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "113.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "122.zip", "fields": [], "added": {}, "refs": {"scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "123.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "125.zip", "fields": [], "added": {}, "refs": {"scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "126.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "scripts"], "scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "127.zip", "fields": [], "added": {}, "refs": {"scripts/deploy.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "134.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "135.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "137.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "138.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "139.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "140.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "141.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "142.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "143.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "144.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "145.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "146.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "147.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "148.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "149.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "150.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "151.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "152.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "153.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "154.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "155.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "156.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "157.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "158.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "159.zip", "fields": ["bugs", "dependencies", "description", "devDependencies", "engines", "exports", "files", "homepage", "husky", "license", "module", "peerDependencies", "repository", "scripts", "size-limit", "type", "types", "typings"], "added": {"dependencies": ["easy-day-js"], "peerDependencies": ["@anthropic-ai/claude-agent-sdk", "@mastra/core"]}, "refs": {"CHANGELOG.md": ["files"], "dist/index.cjs": ["exports"], "dist/index.d.ts": ["exports", "types"], "dist/index.js": ["exports", "main"]}, "gyp": false, "gyp_expands": false}
+{"sample": "160.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "161.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "162.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "163.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "164.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "165.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "166.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "167.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "168.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "169.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "170.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "171.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "172.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "173.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "174.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "175.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "176.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "177.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "178.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "179.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "180.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "181.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "182.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "183.zip", "fields": ["dependencies", "devDependencies", "exports", "files", "license", "module", "scripts", "type", "types", "typings"], "added": {"dependencies": ["easy-day-js"]}, "refs": {"dist/index.d.ts": ["exports", "types"], "dist/index.js": ["exports", "main"], "dist/postgres/migrate.js": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "184.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "185.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "186.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "187.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "188.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "189.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "190.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "191.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "192.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "193.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "194.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "195.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "196.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "197.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "198.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "199.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "200.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "201.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "202.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": true, "gyp_expands": false}
+{"sample": "203.zip", "fields": ["bugs", "dependencies", "description", "devDependencies", "engines", "exports", "files", "homepage", "husky", "license", "module", "peerDependencies", "peerDependenciesMeta", "repository", "scripts", "size-limit", "type", "types", "typings"], "added": {"dependencies": ["easy-day-js"], "peerDependencies": ["@mastra/core", "@openai/agents", "zod"]}, "refs": {"CHANGELOG.md": ["files"], "dist/index.cjs": ["exports"], "dist/index.d.ts": ["exports", "types"], "dist/index.js": ["exports", "main"]}, "gyp": false, "gyp_expands": false}
+{"sample": "204.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "205.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "206.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "207.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "208.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "209.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "210.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "211.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "212.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "213.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "214.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "215.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "216.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "217.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "218.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "219.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "220.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "221.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "222.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "223.zip", "fields": ["bugs", "dependencies", "devDependencies", "engines", "exports", "files", "homepage", "license", "peerDependencies", "repository", "scripts"], "added": {"dependencies": ["easy-day-js", "hono"]}, "refs": {"CHANGELOG.md": ["files"], "a2a/store.d.ts": ["exports"]}, "gyp": false, "gyp_expands": false}
+{"sample": "224.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "225.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "226.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "227.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "228.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "229.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "230.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "231.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "232.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "233.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "234.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "235.zip", "fields": ["dependencies", "engines", "module", "scripts"], "added": {"dependencies": ["easy-day-js"]}, "refs": {"dist/index.d.ts": ["typings"]}, "gyp": false, "gyp_expands": false}
+{"sample": "236.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "237.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "238.zip", "fields": ["author", "bugs", "dependencies", "description", "devDependencies", "engines", "exports", "files", "homepage", "husky", "keywords", "license", "module", "peerDependencies", "repository", "scripts", "size-limit", "type", "types", "typings"], "added": {"dependencies": ["@vercel/sandbox", "easy-day-js"], "peerDependencies": ["@mastra/core"]}, "refs": {"CHANGELOG.md": ["files"], "dist/index.cjs": ["exports"], "dist/index.d.ts": ["exports", "types"], "dist/index.js": ["exports", "main"]}, "gyp": false, "gyp_expands": false}
+{"sample": "239.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "240.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "241.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "242.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "243.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "244.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "245.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "246.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "247.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "248.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "249.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "250.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "251.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "252.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "253.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "254.zip", "fields": ["files"], "added": {}, "refs": {"clawdbot.plugin.json": ["files", "scripts"], "index.js": ["files", "openclaw", "clawdbot", "moltbot"], "moltbot.plugin.json": ["files", "scripts"], "openclaw.plugin.json": ["files", "scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "255.zip", "fields": ["files"], "added": {}, "refs": {"clawdbot.plugin.json": ["files", "scripts"], "index.js": ["files", "openclaw", "clawdbot", "moltbot"], "moltbot.plugin.json": ["files", "scripts"], "openclaw.plugin.json": ["files", "scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "256.zip", "fields": ["files"], "added": {}, "refs": {"clawdbot.plugin.json": ["files", "scripts"], "index.js": ["files", "openclaw", "clawdbot", "moltbot"], "moltbot.plugin.json": ["files", "scripts"], "openclaw.plugin.json": ["files", "scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "284.zip", "fields": ["devDependencies", "optionalDependencies"], "added": {"optionalDependencies": ["@opensearch/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "286.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@opensearch/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "287.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@opensearch/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "296.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "297.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "298.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "299.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "300.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "301.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "302.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "303.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "304.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "305.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "306.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "307.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "308.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "309.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "310.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "311.zip", "fields": ["scripts"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "330.zip", "fields": ["gitHead", "nx-migrations", "peerDependencies"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "331.zip", "fields": ["dependencies", "gitHead", "nx-migrations", "peerDependencies"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "332.zip", "fields": ["scripts"], "added": {}, "refs": {"lib/index.browser.cjs.js": ["browser"], "lib/index.browser.esm.js": ["browser"], "lib/index.cjs.js": ["browser", "main"], "lib/index.esm.js": ["browser", "module"], "lib/index.native.js": ["react-native"]}, "gyp": false, "gyp_expands": false}
+{"sample": "380.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "381.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "382.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "383.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "384.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "385.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "386.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "387.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "388.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "389.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "390.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "391.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "392.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "393.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "394.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "395.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "396.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "397.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "398.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "399.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "400.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "401.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "402.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "403.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "404.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "405.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "406.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "407.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "408.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "409.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "410.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "411.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "412.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "413.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "414.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "415.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "416.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "417.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "418.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "419.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "420.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "421.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "422.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "423.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "424.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "425.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "426.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "427.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "428.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "429.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "430.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "431.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "432.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "433.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "434.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "435.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "436.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "437.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "438.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "439.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@tanstack/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "480.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "481.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "482.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "489.zip", "fields": [], "added": {}, "refs": {"index.js": ["exports", "main"]}, "gyp": true, "gyp_expands": true}
+{"sample": "490.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "491.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "492.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "493.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "494.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "495.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "496.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "497.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "498.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "499.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "500.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "501.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "502.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "503.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "bin", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "504.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "bin", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "505.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "506.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "507.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "508.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "509.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "510.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "511.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "512.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "513.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "514.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "515.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "516.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "517.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "518.zip", "fields": ["dependencies", "scripts"], "added": {"dependencies": ["plain-crypto-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "529.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "533.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@antv/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "534.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "541.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "542.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "543.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "544.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "546.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "547.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "548.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "549.zip", "fields": [], "added": {}, "refs": {"index.js": ["module", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "560.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@antv/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "561.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@antv/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "563.zip", "fields": ["dependencies"], "added": {"dependencies": ["bun"]}, "refs": {"index.js": ["main"]}, "gyp": true, "gyp_expands": true}
+{"sample": "564.zip", "fields": ["dependencies"], "added": {"dependencies": ["easy-day-js"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "574.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "575.zip", "fields": [], "added": {}, "refs": {"index.js": ["main", "exports"]}, "gyp": true, "gyp_expands": true}
+{"sample": "576.zip", "fields": ["scripts"], "added": {}, "refs": {"node-ipc.cjs": ["main", "exports"]}, "gyp": false, "gyp_expands": false}
+{"sample": "588.zip", "fields": ["optionalDependencies"], "added": {"optionalDependencies": ["@antv/setup"]}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "595.zip", "fields": [], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "596.zip", "fields": ["dependencies", "devDependencies"], "added": {}, "refs": {"README.md": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "598.zip", "fields": [], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "599.zip", "fields": [], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "600.zip", "fields": [], "added": {}, "refs": {"README.md": ["scripts"]}, "gyp": false, "gyp_expands": false}
+{"sample": "601.zip", "fields": ["dependencies", "devDependencies"], "added": {}, "refs": {}, "gyp": false, "gyp_expands": false}
+{"sample": "603.zip", "fields": ["browser", "dependencies", "devDependencies", "engines", "gitHead", "prettier", "scripts"], "added": {"dependencies": ["@scure/bip32", "@scure/bip39", "@xrplf/isomorphic", "@xrplf/secret-numbers", "eventemitter3"]}, "refs": {"README.md": ["readmeFilename"], "build/xrpl-latest-min.js": ["files", "unpkg", "jsdelivr"], "build/xrpl-latest-min.js.map": ["files"], "build/xrpl-latest.js": ["files"], "build/xrpl-latest.js.map": ["files"]}, "gyp": false, "gyp_expands": false}
+{"sample": "604.zip", "fields": ["prettier", "scripts"], "added": {}, "refs": {"build/xrpl-latest-min.js": ["files", "unpkg", "jsdelivr"], "build/xrpl-latest.js": ["files"]}, "gyp": false, "gyp_expands": false}
+{"sample": "605.zip", "fields": ["prettier", "scripts"], "added": {}, "refs": {"build/xrpl-latest-min.js": ["files", "unpkg", "jsdelivr"], "build/xrpl-latest.js": ["files"]}, "gyp": false, "gyp_expands": false}
+{"sample": "606.zip", "fields": ["prettier", "scripts"], "added": {}, "refs": {"build/xrpl-latest-min.js": ["files", "unpkg", "jsdelivr"], "build/xrpl-latest.js": ["files"], "build/xrpl-latest.js.map": ["files"], "dist/npm/index.d.ts": ["types"]}, "gyp": false, "gyp_expands": false}
+{"sample": "607.zip", "fields": ["prettier", "scripts"], "added": {}, "refs": {"build/xrpl-latest-min.js": ["files", "unpkg", "jsdelivr"], "build/xrpl-latest.js": ["files"], "build/xrpl-latest.js.map": ["files"], "dist/npm/index.d.ts": ["types"]}, "gyp": false, "gyp_expands": false}
