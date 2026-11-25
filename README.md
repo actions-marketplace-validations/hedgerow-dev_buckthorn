@@ -69,8 +69,9 @@ buckthorn scan --format json ./dist                # machine-readable
 - `check` reads `requirements.txt` with hashes, `uv.lock` and `poetry.lock`,
   and `package-lock.json`, `packages.lock.json` and `packages.config`
   (preview).
-- `check` and `diff` fetch from PyPI over https only (pypi.org and
-  files.pythonhosted.org), and check each file's sha256 before reading it.
+- For Python, `check` and `diff` fetch from PyPI over https only (pypi.org
+  and files.pythonhosted.org), and check each file's sha256 before reading
+  it. npm and NuGet are below.
 - By default `check` reads the file this machine would install for each
   package. `--all-files` reads every platform's.
 
@@ -242,8 +243,13 @@ task assemblies are compiled code the build runs, and they are not read, so a
 package that ships them is `not_verified`. On the top 1,000 NuGet packages it
 gave 903 clean, 8 flagged and 89 not_verified, most of those analyzers
 ([eval/nuget-noise/NOTE.md](https://github.com/hedgerow-dev/buckthorn/blob/main/eval/nuget-noise/NOTE.md)).
-It has not been tested on malicious NuGet packages yet. `check` does not read
-`packages.lock.json` yet. The rules are the `BKT-NUGET-*` ones in
+It has not been tested on malicious NuGet packages yet.
+
+`check` reads `packages.lock.json` and `packages.config`. Each package is
+fetched from api.nuget.org only. A `packages.lock.json` entry is checked
+against its `contentHash` before it is read. `packages.config` pins no hash,
+so what nuget.org serves is scanned, with a note. The rules are the
+`BKT-NUGET-*` ones in
 [docs/rules.md](https://github.com/hedgerow-dev/buckthorn/blob/main/docs/rules.md#nuget).
 
 ### Model repos with remote code
