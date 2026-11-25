@@ -60,13 +60,15 @@ buckthorn scan left-pad-1.3.0.tgz                  # an npm tarball (preview)
 buckthorn scan newtonsoft.json.13.0.4.nupkg        # a NuGet package (preview)
 buckthorn check uv.lock                            # every pinned dependency
 buckthorn check package-lock.json                  # the same for npm (preview)
+buckthorn check packages.lock.json                 # the same for NuGet (preview)
 buckthorn check .mcp.json                          # an agent's MCP servers (preview)
 buckthorn diff requests==2.32.3 requests==2.32.4   # only what an upgrade adds
 buckthorn scan --format json ./dist                # machine-readable
 ```
 
 - `check` reads `requirements.txt` with hashes, `uv.lock` and `poetry.lock`,
-  and `package-lock.json` (preview).
+  and `package-lock.json`, `packages.lock.json` and `packages.config`
+  (preview).
 - `check` and `diff` fetch from PyPI over https only (pypi.org and
   files.pythonhosted.org), and check each file's sha256 before reading it.
 - By default `check` reads the file this machine would install for each

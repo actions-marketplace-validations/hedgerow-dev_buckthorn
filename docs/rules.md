@@ -380,11 +380,29 @@ so by default only the file this machine would install is checked for each
 package (the best-matching wheel, else the sdist). `--all-files` checks every
 pinned file.
 
+For NuGet (preview), `packages.lock.json` (version 1, 2 or 3) and
+`packages.config` are read. Neither says which feed a package came from, so
+every package is fetched from nuget.org (`api.nuget.org`, by its lower-case id
+and NuGet's normalized version). A package from a private feed is then either
+not found there (`BKT-LOCK-002`) or, if nuget.org has another package by that
+name, a hash mismatch (`BKT-LOCK-001`). Project references (`"type":
+"Project"`) are local and not fetched. A package in several target
+frameworks is fetched once.
+
+A `packages.lock.json` entry is checked against its `contentHash` before it
+is read. For a signed package (one with `.signature.p7s`, which nuget.org adds
+when it signs a package) NuGet hashes the zip as it was before signing, with the
+signature entry cut out and the zip's offsets moved back, and so does
+Buckthorn. A signed package NuGet would refuse (two signature entries, a
+zip64 package) is a `BKT-LOCK-002`. `packages.config` pins no hash, so what
+nuget.org serves now is scanned, with a `BKT-LOCK-004` note.
+
 | Rule | Severity | Meaning |
 |---|---|---|
-| BKT-LOCK-001 | high | The downloaded file's hash (sha256, or sha512 for npm) is not the one the lockfile pins. The file is not scanned. |
-| BKT-LOCK-002 | info (coverage) | A pin could not be checked: not pinned with `==` and a hash, from another index or a git or local source, not found on PyPI, not fetched, or a file name that is not a plain wheel or sdist name. For npm: a `resolved` URL off registry.npmjs.org (git, local, another registry), no sha512 `integrity`, or a lockfile version 1. |
+| BKT-LOCK-001 | high | The downloaded file's hash (sha256, or sha512 for npm, or NuGet's content hash) is not the one the lockfile pins. The file is not scanned. |
+| BKT-LOCK-002 | info (coverage) | A pin could not be checked: not pinned with `==` and a hash, from another index or a git or local source, not found on PyPI, not fetched, or a file name that is not a plain wheel or sdist name. For npm: a `resolved` URL off registry.npmjs.org (git, local, another registry), no sha512 `integrity`, or a lockfile version 1. For NuGet: no sha512 `contentHash`, an id or version that is not plain and exact, not found on nuget.org, a signed package NuGet would refuse, or a file that is not a `packages.lock.json` of version 1 to 3 or a `packages.config` that parses. |
 | BKT-LOCK-003 | info | No file of a pin installs on this machine (a Windows-only wheel on macOS, or an npm package for another `os` or `cpu`), so none was checked. `--all-files` checks them all. |
+| BKT-LOCK-004 | info | A `packages.config` package: nothing pins its bytes, so what nuget.org serves now was scanned. |
 
 ## MCP configs
 

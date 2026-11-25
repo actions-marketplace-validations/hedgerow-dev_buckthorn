@@ -64,8 +64,9 @@ def main(argv: list[str] | None = None) -> int:
         "lockfile",
         type=Path,
         nargs="+",
-        help="requirements.txt with hashes, uv.lock, poetry.lock, or an agent's MCP config "
-        "(.mcp.json, mcp.json, claude_desktop_config.json)",
+        help="requirements.txt with hashes, uv.lock, poetry.lock, packages.lock.json, "
+        "packages.config, or an agent's MCP config (.mcp.json, mcp.json, "
+        "claude_desktop_config.json)",
     )
     check.add_argument(
         "--cache-dir",
@@ -393,7 +394,7 @@ def _check_lockfile(path: Path, cache_dir: Path | None, all_files: bool) -> list
     try:
         # A lockfile by name is never read as an MCP config: an "mcpServers" key
         # added to one must not turn it into an empty config that passes.
-        is_lock = path.name in lock.NPM_LOCKFILES
+        is_lock = path.name in lock.NPM_LOCKFILES + lock.NUGET_LOCKFILES
         servers = None if is_lock else mcp_config.servers(path.read_text(encoding="utf-8"))
         if servers is not None:
             results = mcp_config.check(servers, cache_dir=cache_dir, progress=progress)

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `check` reads NuGet's `packages.lock.json` and `packages.config` (preview).
+  Each package is fetched from nuget.org. A `packages.lock.json` entry is
+  checked against its `contentHash` before it is read, computed as NuGet
+  does for a signed package. `packages.config` pins no hash, so what
+  nuget.org serves is scanned, with a note (`BKT-LOCK-004`). The Action and
+  the pre-commit hook take both.
+
 ## 0.3.0
 
 - `scan` reads NuGet packages (`.nupkg`, preview): the `.nuspec`, the

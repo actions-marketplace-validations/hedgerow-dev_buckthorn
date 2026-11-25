@@ -11,8 +11,8 @@ branding:
 inputs:
   lockfile:
     description: >-
-      Path to a requirements.txt with hashes, uv.lock, poetry.lock or
-      package-lock.json (preview).
+      Path to a requirements.txt with hashes, uv.lock, poetry.lock,
+      package-lock.json, packages.lock.json or packages.config (preview).
     required: true
   python-version:
     description: >-
