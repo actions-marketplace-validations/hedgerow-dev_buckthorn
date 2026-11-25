@@ -8,6 +8,10 @@
   does for a signed package. `packages.config` pins no hash, so what
   nuget.org serves is scanned, with a note (`BKT-LOCK-004`). The Action and
   the pre-commit hook take both.
+- A link in an MSBuild `Error`, `Warning` or `Message` no longer makes a
+  command built from properties count as fetching (`BKT-NUGET-BUILD-002`).
+  Native AOT's `Microsoft.DotNet.ILCompiler` and `Sentry` drop from high to
+  medium: they still run commands at build.
 
 ## 0.3.0
 
