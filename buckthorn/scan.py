@@ -28,7 +28,7 @@ from keyword import iskeyword
 from pathlib import Path
 from typing import IO
 
-from buckthorn import npm, nuget
+from buckthorn import npm, nuget, vsix
 from buckthorn.code import (
     _LEGACY_COMMANDS,
     Hit,
@@ -63,11 +63,11 @@ def _is_python(name: str, data: bytes) -> bool:
     return name.endswith(".py") or (data[:2] == b"#!" and b"python" in data.split(b"\n", 1)[0])
 
 
-_ZIP_SUFFIXES = (".whl", ".zip", ".nupkg")
+_ZIP_SUFFIXES = (".whl", ".zip", ".nupkg", ".vsix")
 _TAR_SUFFIXES = (".tar.gz", ".tgz", ".tar.bz2", ".tar.xz", ".tar")
 # Python and npm files: what a lockfile or an index may name.
 ARTIFACT_SUFFIXES = (".whl", ".zip") + _TAR_SUFFIXES
-SCAN_SUFFIXES = ARTIFACT_SUFFIXES + (".nupkg",)  # what `scan` reads
+SCAN_SUFFIXES = ARTIFACT_SUFFIXES + (".nupkg", ".vsix")  # what `scan` reads
 
 
 def read_archive(path: Path) -> tuple[list[tuple[str, bytes]], list[Finding]]:
@@ -621,6 +621,10 @@ def scan_artifact(path: Path) -> list[Finding]:
         if any(f.rule_id == "BKT-SKIP-001" for f in findings):
             return findings  # did not open
         return nuget.scan_nuget(path.name[: -len(".nupkg")], members, findings)
+    if name.endswith(".vsix"):
+        if any(f.rule_id == "BKT-SKIP-001" for f in findings):
+            return findings  # did not open
+        return vsix.scan_vsix(members, findings)
     shape = npm.shape(members, name.endswith(".tgz")) if name.endswith(_TAR_SUFFIXES) else "sdist"
     if shape == "sdist":
         return scan_sdist(path, (members, findings))

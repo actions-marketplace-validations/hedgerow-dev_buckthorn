@@ -552,6 +552,7 @@ class Analysis(NamedTuple):
     loads: dict[str, set[str]]
     dynamic: list[int]  # lines of loads named at run time: require(x), import(x)
     crowded: bool = False  # a name is bound more ways than are followed: not all read
+    unfound: tuple[str, ...] = ()  # names in entry no export gave a function for
 
 
 class _Function(NamedTuple):
@@ -912,6 +913,7 @@ class _Reader:
         for i in exports:
             self._export(i)
         self._module_exports()
+        self._bundle_exports()
 
     def _declarators(self, i: int) -> set[int]:
         """Bind the names declared from i on (`a = 1, {b, c: d} = require('m')`);
@@ -995,6 +997,13 @@ class _Reader:
         (module, attributes), end = found[0][0], found[1]
         if end == b:
             return ("mod", module, attributes)
+        # util.promisify(f) runs f: promisify(exec) is exec.
+        if (
+            (module, attributes) == ("util", ("promisify",))
+            and _is(tokens[end + 1], "(")
+            and self.pairs[end + 1] == b
+        ):
+            return self._value(end + 2, b - 1, scope)
         if _is(tokens[end + 1], "(") and self.pairs[end + 1] == b and attributes:
             if ".".join(p for p in (module, *attributes) if p) in _CLIENTS:
                 return ("mod", module, (*attributes[:-1], attributes[-1] + "()"))
@@ -1243,6 +1252,37 @@ class _Reader:
             else:
                 value = self._value(a, end, -1)
                 self.exports.setdefault(key, []).extend(self._functions_of(value))
+
+    def _bundle_exports(self) -> None:
+        """A bundle's exports, for entry names no export above gave a function
+        for: esbuild's __export(x, {f: () => g}) and webpack's
+        __webpack_require__.d(x, {f: () => g}), which make each export a getter
+        that returns a local function, and `t.f = function` at any depth, as a
+        webpack module function sets its exports parameter."""
+        tokens, n = self.tokens, len(self.tokens)
+        missing = {name for name in self.entry if name and not self.exports.get(name)}
+        for i in range(1, n - 3):
+            t = tokens[i]
+            if t.kind not in ("name", "string") or t.value not in missing:
+                continue
+            found: list[int] = []
+            if _is(tokens[i - 1], ".") and _is(tokens[i + 1], "="):
+                found = self.starts.get(i + 2, [])
+                if not found and tokens[i + 2].kind == "name":  # t.f = g
+                    bound = self.lookup(tokens[i + 2].value, self.owner[i])
+                    found = [v[1] for v in bound if v[0] == "fn"]
+            elif (
+                (_is(tokens[i - 1], "{") or _is(tokens[i - 1], ","))
+                and i + 5 < n
+                and all(_is(tokens[i + k], v) for k, v in ((1, ":"), (2, "("), (3, ")"), (4, "=>")))
+                and tokens[i + 5].kind == "name"
+                # The getter returns one name and nothing else.
+                and (i + 6 >= n or _is(tokens[i + 6], ",") or _is(tokens[i + 6], "}"))
+            ):
+                bound = self.lookup(tokens[i + 5].value, self.owner[i])
+                found = [v[1] for v in bound if v[0] == "fn"]
+            if found:
+                self.exports.setdefault(t.value, []).extend(found)
 
     def _functions_of(self, value: tuple) -> list[int]:
         if value[0] == "fn":
@@ -1521,7 +1561,8 @@ class _Reader:
         for spec in self.reexports:
             self.loads.setdefault(spec, set()).update(exported)
         hits = sorted(self.hits, key=lambda h: h.line)
-        return Analysis(hits, self.loads, self.dynamic, self.crowded)
+        unfound = () if self.reexports else tuple(n for n in self.entry if not self.exports.get(n))
+        return Analysis(hits, self.loads, self.dynamic, self.crowded, unfound)
 
     def _call(self, call: _Call) -> None:
         tokens, line = self.tokens, self.tokens[call.open].line

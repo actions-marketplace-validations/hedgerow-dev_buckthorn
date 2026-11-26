@@ -324,8 +324,29 @@ _CODE_RULES = {
         "persistence": ("BKT-NPM-IMPORT-005", Severity.HIGH),
         "environ": ("BKT-NPM-IMPORT-006", Severity.INFO),
     },
+    "ACTIVATE": {
+        "network": ("BKT-VSX-ACTIVATE-001", Severity.HIGH),
+        "process": ("BKT-VSX-ACTIVATE-002", Severity.MEDIUM),
+        "exec": ("BKT-VSX-ACTIVATE-003", Severity.MEDIUM),
+        "secrets": ("BKT-VSX-ACTIVATE-004", Severity.HIGH),
+        "persistence": ("BKT-VSX-ACTIVATE-005", Severity.HIGH),
+        "environ": ("BKT-VSX-ACTIVATE-006", Severity.INFO),
+    },
+    "UNINSTALL": {
+        "network": ("BKT-VSX-UNINSTALL-001", Severity.HIGH),
+        "process": ("BKT-VSX-UNINSTALL-002", Severity.MEDIUM),
+        "exec": ("BKT-VSX-UNINSTALL-003", Severity.MEDIUM),
+        "secrets": ("BKT-VSX-UNINSTALL-004", Severity.HIGH),
+        "persistence": ("BKT-VSX-UNINSTALL-005", Severity.HIGH),
+        "environ": ("BKT-VSX-UNINSTALL-006", Severity.INFO),
+    },
 }
-_CRITICAL = {"INSTALL": "BKT-NPM-INSTALL-008", "IMPORT": "BKT-NPM-IMPORT-008"}
+_CRITICAL = {
+    "INSTALL": "BKT-NPM-INSTALL-008",
+    "IMPORT": "BKT-NPM-IMPORT-008",
+    "ACTIVATE": "BKT-VSX-ACTIVATE-008",
+    "UNINSTALL": "BKT-VSX-UNINSTALL-008",
+}
 _ANYWHERE_RULES = {
     "hidden": ("BKT-NPM-HIDE-001", Severity.HIGH),
     "encoded": ("BKT-NPM-HIDE-002", Severity.LOW),
@@ -339,7 +360,12 @@ _TYPESCRIPT = (".ts", ".mts", ".cts")
 # Conditions under which Node itself loads an exports target (None: no condition).
 _RUNTIME_CONDITIONS = frozenset({None, "require", "import", "node", "default", "module-sync"})
 _MAX_SCRIPT_DEPTH = 32  # npm run inside npm run, as deep as is followed
-_WHEN = {"INSTALL": "at install", "IMPORT": "at load"}
+_WHEN = {
+    "INSTALL": "at install",
+    "IMPORT": "at load",
+    "ACTIVATE": "at activation",  # a VS Code extension (vsix.py)
+    "UNINSTALL": "at uninstall",
+}
 # Shell words that end one command and start the next.
 _OPERATORS = frozenset({"&&", "||", ";", "|", "&", "(", ")", ";;", "|&"})
 _NODE_VALUE_OPTIONS = frozenset(
