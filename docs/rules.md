@@ -1,8 +1,8 @@
 # Rules
 
 Every finding has a rule id. Ids are public and stable within a major version.
-npm rules use `BKT-NPM-*` (see npm) and NuGet rules `BKT-NUGET-*` (see
-NuGet); ids that mean the same thing in each ecosystem (`BKT-SKIP-*`,
+npm rules use `BKT-NPM-*` (see npm), NuGet rules `BKT-NUGET-*` (see
+NuGet) and VS Code extension rules `BKT-VSX-*`; ids that mean the same thing in each ecosystem (`BKT-SKIP-*`,
 `BKT-LOCK-*`, `BKT-EXFIL-*`) are shared.
 
 Severity sets the verdict: anything above `info` makes an artifact `flagged`.
@@ -895,6 +895,39 @@ compiler at every build.
 `BKT-EXFIL-001` and `BKT-EXFIL-002` (see Shipped exfiltration channels) are
 read from every text and attribute value in the `.nuspec` and the MSBuild
 files read above, and from the PowerShell scripts above.
+
+## VS Code extensions
+
+`scan` reads `.vsix` files: VS Code Marketplace and Open VSX extensions, which
+Cursor and Windsurf install too (preview). VS Code unpacks `extension/` and
+runs no install script. It loads the `main` entry (in a browser, `browser`)
+when the extension activates and calls its `activate` and `deactivate`
+exports, and it runs `scripts["vscode:uninstall"]` with `node` when the
+extension is removed. Both entries are read, with what they load, by the npm
+reader (above): the top level, `activate`, `deactivate` and the functions
+they call by name. A bundle's exports are found too: esbuild and webpack
+getters (`{activate: () => f}`) and `t.activate = function` at any depth. A
+method called on an object is not followed, so a call a class makes on
+activation is not read. The hidden-JavaScript and channel rules apply as for
+npm (`BKT-NPM-HIDE-*`, `BKT-EXFIL-*`).
+
+| Rule | Severity | Meaning |
+|---|---|---|
+| BKT-VSX-META-001 | medium | `extension/package.json` is missing or unreadable, so what runs is unknown. |
+| BKT-VSX-ACTIVATE-001 | high | Network access at activation. |
+| BKT-VSX-ACTIVATE-002 | medium | Runs a process at activation. |
+| BKT-VSX-ACTIVATE-003 | medium | `eval`, `Function` or `vm` of code that cannot be read, at activation. |
+| BKT-VSX-ACTIVATE-004 | high | Passes a credential path to a call at activation. |
+| BKT-VSX-ACTIVATE-005 | high | Passes a start-up location to a call at activation. |
+| BKT-VSX-ACTIVATE-006 | info | Reads the whole environment at activation. |
+| BKT-VSX-ACTIVATE-008 | critical | Reads credentials or the whole environment **and** uses the network at activation, in one file. |
+| BKT-VSX-SCRIPT-001 | medium | A `vscode:uninstall` script, which runs when the extension is removed. Its file is read whole: `BKT-VSX-UNINSTALL-001` to `-008` mean the same as the `ACTIVATE` rules, at uninstall. Other scripts (`vscode:prepublish`, `postinstall`) never run on a user's machine. |
+| BKT-VSX-HIDE-001 | high | A file that runs holds 16 or more characters in a row that no editor shows: variation selectors, tag characters, zero-width marks. GlassWorm hid its payload this way. An emoji uses one or two. |
+| BKT-VSX-DEPS-001 | info | `extensionDependencies` or `extensionPack` names other extensions VS Code installs with this one. They are not read here. |
+
+Coverage: an entry that names `activate` but gives no function the reader
+can find for it, a native `.node` entry or addon, and JavaScript that does
+not tokenize are `BKT-SKIP-003`, so the verdict is `not_verified`.
 
 ## Hugging Face remote code
 

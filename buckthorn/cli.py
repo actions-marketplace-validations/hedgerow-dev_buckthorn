@@ -52,7 +52,10 @@ def main(argv: list[str] | None = None) -> int:
         help="scan wheels, sdists and npm tarballs, folders of them, or a model folder's code",
     )
     scan.add_argument(
-        "target", type=Path, nargs="+", help="a .whl, .tar.gz, .tgz, .zip or .nupkg, or a folder"
+        "target",
+        type=Path,
+        nargs="+",
+        help="a .whl, .tar.gz, .tgz, .zip, .nupkg or .vsix, or a folder",
     )
     _add_report_arguments(scan)
     check = sub.add_parser(
