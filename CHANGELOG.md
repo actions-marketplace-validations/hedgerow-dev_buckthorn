@@ -5,8 +5,9 @@
 - `scan` reads VS Code extensions (`.vsix`, from the Marketplace or Open VSX,
   preview): the code that runs when the extension activates (`main`,
   `browser`, `activate`, `deactivate`, bundled or not), the `vscode:uninstall`
-  script, and invisible characters in code that runs, as GlassWorm used. New
-  rules: `BKT-VSX-*`.
+  script, invisible characters in code that runs (as GlassWorm used),
+  obfuscator output anywhere in the extension, and a shipped shell script
+  its code names. New rules: `BKT-VSX-*`.
 - `check` reads NuGet's `packages.lock.json` and `packages.config` (preview).
   Each package is fetched from nuget.org. A `packages.lock.json` entry is
   checked against its `contentHash` before it is read, computed as NuGet

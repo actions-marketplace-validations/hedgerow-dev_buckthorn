@@ -997,6 +997,13 @@ class _Reader:
         (module, attributes), end = found[0][0], found[1]
         if end == b:
             return ("mod", module, attributes)
+        # util.promisify(f) runs f: promisify(exec) is exec.
+        if (
+            (module, attributes) == ("util", ("promisify",))
+            and _is(tokens[end + 1], "(")
+            and self.pairs[end + 1] == b
+        ):
+            return self._value(end + 2, b - 1, scope)
         if _is(tokens[end + 1], "(") and self.pairs[end + 1] == b and attributes:
             if ".".join(p for p in (module, *attributes) if p) in _CLIENTS:
                 return ("mod", module, (*attributes[:-1], attributes[-1] + "()"))

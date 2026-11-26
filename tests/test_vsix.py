@@ -55,6 +55,13 @@ def test_extension_with_no_code_is_clean(make_vsix):
     assert scan_artifact(make_vsix({"themes/dark.json": "{}"})) == []
 
 
+def test_a_package_json_past_the_archive_limit_is_only_not_verified(make_vsix, monkeypatch):
+    monkeypatch.setattr("buckthorn.scan.MAX_MEMBER_BYTES", 100)
+    findings = scan_artifact(make_vsix({"a/big.zip": b"x" * 200}, manifest=None))
+    assert "BKT-VSX-META-001" not in _rules(findings)
+    assert verdict(findings) == "not_verified"
+
+
 @pytest.mark.parametrize("manifest", [None, "{not json"])
 def test_missing_or_unreadable_package_json_is_flagged(make_vsix, manifest):
     findings = scan_artifact(make_vsix(manifest=manifest))
@@ -167,6 +174,21 @@ def test_browser_entry_is_read_too(make_vsix):
     assert _rules(findings) == ["BKT-VSX-ACTIVATE-001"]
 
 
+@pytest.mark.parametrize(
+    "setup",
+    [
+        "const { exec } = require('child_process');\nconst { promisify } = require('util');\n"
+        "const run = promisify(exec);\n",
+        "const cp = require('child_process'), util = require('util');\n"
+        "const run = util.promisify(cp.exec);\n",
+    ],
+)
+def test_a_promisified_process_call_is_followed(make_vsix, setup):
+    code = setup + "exports.activate = async function () { await run('x'); };"
+    findings = scan_artifact(make_vsix({"main.js": code}, {"main": "main.js"}))
+    assert _rules(findings) == ["BKT-VSX-ACTIVATE-002"]
+
+
 def test_credentials_and_network_at_activation_is_critical(make_vsix):
     code = "const fs = require('fs');\nfs.readFileSync(require('os').homedir() + '/.ssh/id_rsa');\n"
     findings = scan_artifact(make_vsix({"main.js": code + FETCH}, {"main": "main.js"}))
@@ -194,6 +216,53 @@ def test_invisible_characters_in_code_that_runs_are_high(make_vsix):
 def test_an_emoji_or_a_lone_zero_width_space_is_not_invisible_code(make_vsix, text):
     findings = scan_artifact(make_vsix({"main.js": f"const s = '{text}';\n"}, {"main": "main.js"}))
     assert findings == []
+
+
+OBFUSCATED = (
+    "var _0x3e52=['log','exec'];(function(_0x1a2b,_0x3c4d){var _0x5e6f=function(_0x7a8b){"
+    "while(--_0x7a8b){_0x1a2b['push'](_0x1a2b['shift']());}};_0x5e6f(++_0x3c4d);}"
+    "(_0x3e52,0x1505));var _0x3390=function(_0x9c0d,_0xab12){_0x9c0d=_0x9c0d-0x0;"
+    "var _0xcd34=_0x3e52[_0x9c0d];return _0xcd34;};var _0xef56=_0x3390('0x0');\n"
+)
+
+
+def test_obfuscator_output_anywhere_in_the_extension_is_medium(make_vsix):
+    # In a file nothing runs at activation, too: a command can run it.
+    files = {"main.js": "exports.activate = function () {};", "lib/x.js": OBFUSCATED}
+    findings = scan_artifact(make_vsix(files, {"main": "main.js"}))
+    assert _rules(findings) == ["BKT-VSX-HIDE-002"]
+    assert findings[0].file_path == "extension/lib/x.js"
+    assert verdict(findings) == "flagged"
+
+
+def test_minified_code_is_not_obfuscator_output(make_vsix):
+    code = "var a=function(b,c){return b+c},d=a(1,2),e=0x1f,f=[d,e];exports.activate=function(){};"
+    assert scan_artifact(make_vsix({"main.js": code}, {"main": "main.js"})) == []
+
+
+@pytest.mark.parametrize("script", ["scripts/run.bat", "x.CMD", "a/b.ps1", "s.vbs", "t.sh"])
+def test_a_theme_that_ships_a_script_its_code_names_is_medium(make_vsix, script):
+    name = script.rsplit("/", 1)[-1]
+    code = f"exports.activate = function (c) {{ c.asAbsolutePath('{script}'); }}; // {name}"
+    manifest = {"main": "main.js", "contributes": {"themes": [{"path": "./t.json"}]}}
+    findings = scan_artifact(make_vsix({"main.js": code, script: "echo hi"}, manifest))
+    assert _rules(findings) == ["BKT-VSX-RUN-001"]
+    assert verdict(findings) == "flagged"
+    assert findings[0].file_path == f"extension/{script}"
+
+
+def test_a_shipped_script_is_a_note_unless_the_extension_is_only_a_theme(make_vsix):
+    # Language tools run their own scripts all the time (eval/vscode-malicious).
+    files = {"main.js": "exports.activate = function () {}; // run.sh", "run.sh": "echo"}
+    manifest = {"main": "main.js", "contributes": {"commands": [], "themes": []}}
+    findings = scan_artifact(make_vsix(files, manifest))
+    assert [(f.rule_id, f.severity.value) for f in findings] == [("BKT-VSX-RUN-001", "info")]
+    assert verdict(findings) == "clean"
+
+
+def test_a_shipped_script_nothing_names_is_not_counted(make_vsix):
+    files = {"main.js": "exports.activate = function () {};", "build/release.sh": "make"}
+    assert scan_artifact(make_vsix(files, {"main": "main.js"})) == []
 
 
 # The uninstall hook.

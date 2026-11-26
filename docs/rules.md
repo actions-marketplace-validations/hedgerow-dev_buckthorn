@@ -905,7 +905,7 @@ when the extension activates and calls its `activate` and `deactivate`
 exports, and it runs `scripts["vscode:uninstall"]` with `node` when the
 extension is removed. Both entries are read, with what they load, by the npm
 reader (above): the top level, `activate`, `deactivate` and the functions
-they call by name. A bundle's exports are found too: esbuild and webpack
+they call by name (`util.promisify(exec)` is followed as `exec`). A bundle's exports are found too: esbuild and webpack
 getters (`{activate: () => f}`) and `t.activate = function` at any depth. A
 method called on an object is not followed, so a call a class makes on
 activation is not read. The hidden-JavaScript and channel rules apply as for
@@ -913,7 +913,7 @@ npm (`BKT-NPM-HIDE-*`, `BKT-EXFIL-*`).
 
 | Rule | Severity | Meaning |
 |---|---|---|
-| BKT-VSX-META-001 | medium | `extension/package.json` is missing or unreadable, so what runs is unknown. |
+| BKT-VSX-META-001 | medium | `extension/package.json` is missing or unreadable, so what runs is unknown. Not when the archive limit stopped the read before it (`BKT-SKIP-002`). |
 | BKT-VSX-ACTIVATE-001 | high | Network access at activation. |
 | BKT-VSX-ACTIVATE-002 | medium | Runs a process at activation. |
 | BKT-VSX-ACTIVATE-003 | medium | `eval`, `Function` or `vm` of code that cannot be read, at activation. |
@@ -923,6 +923,8 @@ npm (`BKT-NPM-HIDE-*`, `BKT-EXFIL-*`).
 | BKT-VSX-ACTIVATE-008 | critical | Reads credentials or the whole environment **and** uses the network at activation, in one file. |
 | BKT-VSX-SCRIPT-001 | medium | A `vscode:uninstall` script, which runs when the extension is removed. Its file is read whole: `BKT-VSX-UNINSTALL-001` to `-008` mean the same as the `ACTIVATE` rules, at uninstall. Other scripts (`vscode:prepublish`, `postinstall`) never run on a user's machine. |
 | BKT-VSX-HIDE-001 | high | A file that runs holds 16 or more characters in a row that no editor shows: variation selectors, tag characters, zero-width marks. GlassWorm hid its payload this way. An emoji uses one or two. |
+| BKT-VSX-HIDE-002 | medium | A JavaScript file anywhere in the extension is `javascript-obfuscator` output: 10 or more distinct names of the form `_0x` and 4 to 6 hex digits, which no minifier writes. Any file counts, since a command or a view can run it. |
+| BKT-VSX-RUN-001 | medium | An extension that otherwise only contributes themes, icons, grammars, languages or snippets ships a script a shell runs (`.bat`, `.cmd`, `.ps1`, `.vbs`, `.sh`) and its JavaScript names that file, so it can run it. A theme needs no script. Info for any other extension: language tools run their own scripts. The script itself is not read. |
 | BKT-VSX-DEPS-001 | info | `extensionDependencies` or `extensionPack` names other extensions VS Code installs with this one. They are not read here. |
 
 Coverage: an entry that names `activate` but gives no function the reader

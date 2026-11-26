@@ -22,6 +22,18 @@ _TOP = "extension"
 _MANIFEST = f"{_TOP}/package.json"
 _CALLED = ("activate", "deactivate")
 _NAMES_ACTIVATE = re.compile(rb"\bactivate\b")
+# javascript-obfuscator renames every identifier to _0x and a hex number; no
+# minifier does. Ten distinct ones is far past chance.
+_OBFUSCATED_NAME = re.compile(rb"\b_0x[0-9a-f]{4,6}\b")
+_OBFUSCATED_NAMES = 10
+# Scripts a shell runs. An extension that ships one and names it in its code
+# is set to run it (as the QuantumCodeLabs themes run scripts/run.bat). In the
+# top 100 Open VSX extensions 13 did, all language tools (eval/vscode-malicious):
+# medium only for an extension that is otherwise a theme, which needs none.
+_SCRIPTS = (".bat", ".cmd", ".ps1", ".vbs", ".sh")
+_THEME_PARTS = frozenset(
+    {"themes", "iconThemes", "productIconThemes", "grammars", "languages", "snippets"}
+)
 # Characters no editor draws: variation selectors, tag characters and zero-width
 # marks. GlassWorm hid its payload in thousands of them; an emoji or a joined
 # emoji sequence uses one or two at a time.
@@ -43,11 +55,11 @@ def scan_vsix(members: list[tuple[str, bytes]], read: list[Finding]) -> list[Fin
         npm._load(files["package.json"]) if "package.json" in files else (None, "no package.json")
     )
     if manifest is None:
-        message = "extension/package.json is missing or unreadable, so what runs is unknown"
-        return findings + [
-            Finding("BKT-SKIP-003", problem, Severity.INFO, _MANIFEST),
-            Finding("BKT-VSX-META-001", message, Severity.MEDIUM, _MANIFEST),
-        ]
+        findings.append(Finding("BKT-SKIP-003", problem, Severity.INFO, _MANIFEST))
+        if "package.json" in files or not any(f.rule_id == "BKT-SKIP-002" for f in read):
+            message = "extension/package.json is missing or unreadable, so what runs is unknown"
+            findings.append(Finding("BKT-VSX-META-001", message, Severity.MEDIUM, _MANIFEST))
+        return findings  # else: past the archive limit, a gap and not a fault
     findings += _dependencies(manifest)
     package = npm._Package(files, dict.fromkeys(files, _TOP), manifest)
     _uninstall(package, manifest)
@@ -80,6 +92,25 @@ def scan_vsix(members: list[tuple[str, bytes]], read: list[Finding]) -> list[Fin
             findings.append(
                 Finding("BKT-VSX-HIDE-001", message, Severity.HIGH, package.at(path), where)
             )
+    code = b"\n".join(d for p, d in files.items() if p.endswith(npm._JS_EXTENSIONS))
+    parts = manifest.get("contributes")
+    theme = isinstance(parts, dict) and bool(parts) and set(parts) <= _THEME_PARTS
+    for path in sorted(files):
+        name = posixpath.basename(path)
+        if path.lower().endswith(_SCRIPTS) and name.encode() in code:
+            what = "a theme that ships a script" if theme else "ships a script"
+            message = f"{what} its code names, so it can run it ({name[:100]})"
+            severity = Severity.MEDIUM if theme else Severity.INFO
+            findings.append(Finding("BKT-VSX-RUN-001", message, severity, package.at(path)))
+    # Obfuscated code anywhere: a command or a view can run any file.
+    for path, data in sorted(files.items()):
+        if path.endswith(npm._JS_EXTENSIONS):
+            names = set(_OBFUSCATED_NAME.findall(data))
+            if len(names) >= _OBFUSCATED_NAMES:
+                message = f"is obfuscated: {len(names)} names like {min(names).decode()}"
+                findings.append(
+                    Finding("BKT-VSX-HIDE-002", message, Severity.MEDIUM, package.at(path))
+                )
     return findings + package.findings()
 
 
